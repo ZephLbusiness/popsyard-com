@@ -26,8 +26,32 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: (req, file, cb) => { const ok = ["image/jpeg", "image/png", "image/webp"]; ok.includes(file.mimetype) ? cb(null, true) : cb(new Error("Only JPG/PNG/WebP allowed")); } });
 
 app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+const rateLimitStore = {};
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/") || req.path === "/api/stripe/webhook") return next();
+  const key = req.ip;
+  const now = Date.now();
+  if (!rateLimitStore[key] || rateLimitStore[key].resetAt < now) {
+    rateLimitStore[key] = { count: 0, resetAt: now + 60000 };
+  }
+  rateLimitStore[key].count++;
+  if (rateLimitStore[key].count > 120) {
+    return res.status(429).json({ error: "Too many requests. Please slow down." });
+  }
+  next();
+});
+
 app.use("/photos", express.static(PHOTOS_DIR));
 app.use((req, res, next) => {
   if (req.path.startsWith("/data/") || req.path.startsWith("/sent-photos/") || req.path.startsWith("/node_modules/") || req.path === "/.env") {

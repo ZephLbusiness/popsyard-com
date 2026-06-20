@@ -342,18 +342,12 @@ function setupOrderForm() {
     spotsRemaining = SPOTS_TOTAL - count;
     if (spotEl) spotEl.textContent = Math.max(0, spotsRemaining);
 
-    const founding = Math.max(0, 10 - count);
-    const foundingEl = document.getElementById("founding-remaining");
-    if (foundingEl) foundingEl.textContent = founding;
-
     const bannerText = document.getElementById("spots-banner-text");
     if (bannerText) {
       if (spotsRemaining <= 0) {
         bannerText.innerHTML = '&#x26A0; All 15 senior yard slots are filled. <a href="#quote" style="color:var(--accent)">Join the waitlist</a> for the next opening.';
-      } else if (founding > 0) {
-        bannerText.innerHTML = `&#x26A0; Now accepting senior yard membership applications &mdash; limited to <strong>15 yards</strong>. <strong>${spotsRemaining}</strong> spots left. Founding member pricing for the next <strong>${founding}</strong>.`;
       } else {
-        bannerText.innerHTML = `&#x26A0; Founding member slots are filled. Only <strong>${spotsRemaining}</strong> senior yard spot${spotsRemaining > 1 ? "s" : ""} left at standard rates.`;
+        bannerText.innerHTML = `&#x26A0; Now accepting senior yard membership applications &mdash; limited to <strong>15 yards</strong>. <strong>${spotsRemaining}</strong> spot${spotsRemaining > 1 ? "s" : ""} left.`;
       }
     }
   }
@@ -409,7 +403,6 @@ function setupOrderForm() {
       preferredEmployee: formData.get("preferredEmployee") || "",
       notes: formData.get("notes"),
       bookedAt: new Date().toISOString(),
-      foundingMember: Object.keys(bookedSlots).length < 10,
     };
 
     bookedSlots[key] = booking;
@@ -430,13 +423,8 @@ function setupOrderForm() {
       }
     } catch {}
 
-    if (booking.foundingMember) {
-      message.className = "booking-message field-wide is-success";
-      message.textContent = "Thank you for your application! As one of our founding members, your rate is locked in for life. We'll contact you within 24 hours to confirm.";
-    } else {
-      message.className = "booking-message field-wide is-success";
-      message.textContent = "Thank you for your application! We'll review it and contact you within 24 hours to confirm your senior yard membership.";
-    }
+    message.className = "booking-message field-wide is-success";
+    message.textContent = "Thank you for your application! We'll review it and contact you within 24 hours to confirm your senior yard membership.";
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 1500);
     const savedInfo = { name: booking.name, phone: booking.phone, email: booking.email, address: booking.address, recipientName: booking.recipientName, recipientPhone: booking.recipientPhone };
     localStorage.setItem("savedCustomerInfo", JSON.stringify(savedInfo));

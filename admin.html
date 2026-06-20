@@ -424,10 +424,9 @@
           const phoneDigits = b.phone ? b.phone.replace(/[^0-9]/g, "") : "";
           const seniorDigits = b.recipientPhone ? b.recipientPhone.replace(/[^0-9]/g, "") : "";
           const phoneLink = phoneDigits ? `tel:${phoneDigits}` : "#";
-          const foundingBadge = b.foundingMember ? '<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--green-dark);font-size:0.72rem;font-weight:900;margin-left:6px">Founder</span>' : "";
           const name = esc(b.name);
           html += `<tr>
-            <td><strong>${name}</strong>${foundingBadge}</td>
+            <td><strong>${name}</strong></td>
             <td>${phoneDigits ? `<a href="${phoneLink}" class="call">${esc(b.phone)}</a>` : "\u2014"}</td>
             <td>${b.recipientName ? esc(b.recipientName) : "\u2014"}</td>
             <td>${seniorDigits ? `<a href="tel:${seniorDigits}" class="call">${esc(b.recipientPhone)}</a>` : "\u2014"}</td>
@@ -499,20 +498,17 @@
       async function addTestBooking() {
         const bookings = getBookings();
         const key = Date.now().toString();
-        const founding = Object.keys(bookings).length < 10;
         const newBooking = {
           name: "Test Senior Client", phone: "555-123-4567", recipientName: "Grandma Betty", recipientPhone: "555-987-6543", email: "test@example.com",
           address: "123 Grandma Ln, Dallas, OR", dogs: "2 dogs",
-          plan: "Silver Membership ($179.99/mo)",
+          plan: "Silver Membership ($159.99/mo)",
           notes: "Gate code: 1234. Prefers morning visits.",
           bookedAt: new Date().toISOString(),
-          foundingMember: founding,
         };
         bookings[key] = newBooking;
         localStorage.setItem(BOOKED_SLOTS_KEY, JSON.stringify(bookings));
         try { await fetch(BACKEND_URL + "/api/bookings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newBooking), signal: AbortSignal.timeout(3000) }); } catch {}
         renderTable();
-        alert("Test booking added. Founding member: " + (founding ? "Yes" : "No"));
       }
 
       function openPhotoModal(bookingKey) {

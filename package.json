@@ -1,7 +1,7 @@
 {
-  "name": "silver-yard-care",
-  "version": "2.0.0",
-  "description": "Silver Yard Care Club - Backend with Stripe, Calendar, SMS, SQLite",
+  "name": "popsyard-com",
+  "version": "2.1.0",
+  "description": "popsyard.com - Backend with Stripe, Calendar, SMS, SQLite",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
