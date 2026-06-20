@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin &mdash; popsyard.com</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      * { box-sizing: border-box; }
+      body { padding: 20px; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      h1 { font-size: 1.5rem; margin-bottom: 4px; }
+      .sub { color: var(--muted); margin-bottom: 20px; font-size: 0.9rem; }
+      a { color: var(--green); }
+      .back-link { display: inline-block; margin-bottom: 16px; color: var(--green); font-weight: 700; text-decoration: none; }
+      .back-link:hover { text-decoration: underline; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+      th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+      th { background: var(--green-dark); color: #fff; font-weight: 800; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      tr:hover td { background: var(--surface-soft); }
+      .actions a, .actions button { display: inline-block; margin-right: 6px; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; }
+      .actions button:hover, .actions a:hover { background: var(--surface-soft); }
+      .call { color: var(--green); border-color: var(--green); }
+      .notes-wrap { position: relative; }
+      .notes-input { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 0.82rem; background: var(--surface); color: var(--ink); max-height: 3.2em; overflow: hidden; transition: max-height 0.2s; resize: none; cursor: pointer; }
+      .notes-input:focus { max-height: 12em; overflow-y: auto; resize: vertical; cursor: text; }
+      .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+      .empty h2 { font-size: 1.3rem; }
+      .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+      .tabs button { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; cursor: pointer; }
+      .tabs button.active { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+      .tabs button:hover:not(.active) { background: var(--surface-soft); }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+      .calendar-header { font-weight: 800; text-align: center; padding: 8px; font-size: 0.78rem; text-transform: uppercase; color: var(--muted); }
+      .calendar-day { min-height: 80px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 0.82rem; cursor: pointer; }
+      .calendar-day:hover { background: var(--surface-soft); }
+      .calendar-day.other-month { opacity: 0.35; }
+      .calendar-day.today { border-color: var(--green); border-width: 2px; }
+      .calendar-day .day-num { font-weight: 800; margin-bottom: 4px; }
+      .calendar-day .appt { padding: 2px 4px; margin-bottom: 2px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; }
+      .calendar-day .appt-type-subscription { background: #c8e6c9; color: #1b5e20; }
+      .calendar-day .appt-type-one_time { background: #fff9c4; color: #795548; }
+      .calendar-day .appt-type-manual { background: var(--surface-soft); color: var(--green-dark); }
+      .calendar-day .appt-conflict { background: #ffcdd2; color: #b71c1c; }
+      .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+      .calendar-nav h3 { margin: 0; }
+
+      .modal-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; }
+      .modal-overlay.show { display: flex; }
+      .modal { background: var(--surface); border-radius: 12px; padding: 28px; width: 100%; max-width: 440px; box-shadow: var(--shadow); }
+      .modal h3 { margin: 0 0 16px; }
+      .modal input, .modal select, .modal textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; font-size: 0.88rem; color: var(--ink); background: var(--surface); }
+      .modal button { padding: 10px 18px; border-radius: 6px; border: 0; background: var(--green); color: #fff; font-weight: 800; cursor: pointer; margin-right: 8px; }
+      .modal button:hover { background: var(--green-dark); }
+      .modal button.cancel { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+
+      .photo-preview { max-width: 200px; max-height: 150px; border-radius: 6px; margin-top: 8px; display: none; }
+
+      #login-overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+      #login-overlay.hidden { display: none; }
+      .login-box { background: var(--surface); padding: 40px; border-radius: 12px; box-shadow: var(--shadow); width: 100%; max-width: 380px; text-align: center; }
+      .login-box h2 { margin-bottom: 8px; font-size: 1.4rem; }
+      .login-box p { color: var(--muted); margin-bottom: 24px; font-size: 0.9rem; }
+      .login-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 1rem; margin-bottom: 12px; box-sizing: border-box; color: var(--ink); background: var(--surface); }
+      .login-box input:focus { outline: 2px solid var(--green); border-color: transparent; }
+      .login-box button { width: 100%; padding: 12px; border: 0; border-radius: 8px; background: var(--green); color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
+      .login-box button:hover { background: var(--green-dark); }
+      .login-error { color: #a7382d; font-size: 0.85rem; font-weight: 700; margin-top: 8px; display: none; }
+      .login-error.show { display: block; }
+      .login-success { color: var(--green-dark); font-size: 0.85rem; font-weight: 700; margin-top: 8px; display: none; }
+      .login-success.show { display: block; }
+
+      .server-banner { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.85rem; font-weight: 700; }
+      .server-online { background: #d4edda; color: #155724; }
+      .server-offline { background: #fff3cd; color: #856404; }
+    </style>
+  </head>
+  <body>
+    <div id="login-overlay">
+      <div class="login-box" id="login-screen">
+        <h2>Admin Login</h2>
+        <p id="login-desc">Enter your password to view bookings.</p>
+        <input type="password" id="pw-input" placeholder="Password" autocomplete="off" />
+        <input type="password" id="pw-confirm" placeholder="Confirm password" autocomplete="off" style="display:none" />
+        <button id="login-btn" onclick="handleSubmit()">Unlock</button>
+        <p class="login-error" id="login-error"></p>
+        <p class="login-success" id="login-success"></p>
+      </div>
+    </div>
+
+    <div id="admin-content" style="display:none">
+      <a class="back-link" href="index.html">&larr; Back to site</a>
+      <h1>popsyard.com &mdash; Admin</h1>
+      <p class="sub" id="server-status"></p>
+
+      <div class="tabs">
+        <button class="active" onclick="switchTab('bookings', this)">&#x1F4CB; Bookings</button>
+        <button onclick="switchTab('calendar', this)">&#x1F4C5; Calendar</button>
+        <button onclick="switchTab('onboard', this)">&#x1F4CB; Phone Onboard</button>
+        <button onclick="switchTab('waitlist', this)">&#x1F4CB; Waitlist</button>
+        <button onclick="switchTab('profile', this)">&#x1F9D1; My Profile</button>
+        <button onclick="switchTab('integrations', this)">&#x1F517; Services</button>
+      </div>
+
+      <div id="tab-bookings" class="tab-content active">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <button onclick="syncBookingsFromBackend().then(() => renderTable())">&#x21bb; Refresh</button>
+          <button onclick="exportData()">&#x2197; Export CSV</button>
+          <button onclick="addTestBooking()">&#x1F4CB; Add test booking</button>
+          <button onclick="logout()" style="margin-left:auto;border-color:#a7382d;color:#a7382d">Logout</button>
+          <span style="color:var(--muted);font-size:0.88rem" id="count"></span>
+        </div>
+        <div id="table-wrap"></div>
+      </div>
+
+      <div id="tab-waitlist" class="tab-content">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+          <button onclick="renderWaitlist()">&#x21bb; Refresh</button>
+          <span style="color:var(--muted);font-size:0.88rem" id="waitlist-count"></span>
+        </div>
+        <div id="waitlist-wrap"></div>
+      </div>
+
+      <div id="tab-onboard" class="tab-content">
+        <h3>&#x1F4CB; Phone-In Onboarding</h3>
+        <p style="color:var(--muted);margin-bottom:16px">Enter customer info to create a subscription. They'll receive a Stripe invoice email to confirm payment.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px">
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Buyer name</span><input type="text" id="on-name" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Buyer phone</span><input type="tel" id="on-phone" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Senior name</span><input type="text" id="on-senior-name" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Senior phone</span><input type="tel" id="on-senior-phone" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Email</span><input type="email" id="on-email" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Address</span><input type="text" id="on-address" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px" /></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Dogs</span><select id="on-dogs" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px"><option>1 dog</option><option>2 dogs</option><option>3+ dogs</option></select></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Plan</span><select id="on-plan" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px"><option value="silver">Silver ($159.99/4wk)</option><option value="gold">Gold ($359.99/4wk)</option><option value="one_time">One-Time Clean ($59.99)</option></select></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Day of week</span><select id="on-day" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></label>
+          <label><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Time slot</span><select id="on-time" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px"><option value="11am">11:00 AM</option><option value="3pm">3:00 PM</option><option value="4pm">4:00 PM</option><option value="5pm">5:00 PM</option></select></label>
+          <label style="grid-column:1/-1"><span style="display:block;font-weight:800;font-size:0.78rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Notes</span><textarea id="on-notes" rows="2" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px"></textarea></label>
+        </div>
+        <button onclick="phoneOnboard()" style="margin-top:16px;padding:12px 28px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;cursor:pointer">Create Subscription &amp; Send Invoice</button>
+        <p id="onboard-status" style="margin-top:8px;font-size:0.85rem;font-weight:700;display:none"></p>
+      </div>
+
+      <div id="tab-profile" class="tab-content">
+        <h3>Crew Photo &amp; Bio</h3>
+        <p style="color:var(--muted);margin-bottom:16px">Upload your photo and update your bio. This shows on the main site in the "Meet Your Crew" section.</p>
+        <div style="max-width:500px">
+          <label style="display:block;margin-bottom:12px">
+            <span style="font-weight:800;display:block;margin-bottom:4px">Your photo</span>
+            <input type="file" id="crew-photo-input" accept="image/*" />
+            <div id="crew-photo-preview" style="margin-top:8px;width:120px;height:120px;border-radius:12px;border:2px solid var(--line);overflow:hidden;display:none;background:var(--surface-soft)"></div>
+          </label>
+          <label style="display:block;margin-bottom:12px">
+            <span style="font-weight:800;display:block;margin-bottom:4px">Your name</span>
+            <input type="text" id="crew-name-input" placeholder="Zeph" style="width:100%" />
+          </label>
+          <label style="display:block;margin-bottom:12px">
+            <span style="font-weight:800;display:block;margin-bottom:4px">Your phone number</span>
+            <input type="tel" id="crew-phone-input" placeholder="555-123-4567" style="width:100%" />
+            <span style="font-size:0.78rem;color:var(--muted)">Used for group texts with new customers.</span>
+          </label>
+          <label style="display:block;margin-bottom:12px">
+            <span style="font-weight:800;display:block;margin-bottom:4px">Your title</span>
+            <input type="text" id="crew-title-input" placeholder="Owner &amp; Senior Yard Technician" style="width:100%" />
+          </label>
+          <label style="display:block;margin-bottom:12px">
+            <span style="font-weight:800;display:block;margin-bottom:4px">Your bio</span>
+            <textarea id="crew-bio-input" rows="4" style="width:100%" placeholder="Tell customers about yourself..."></textarea>
+          </label>
+          <button onclick="saveCrewProfile()" style="padding:10px 24px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;cursor:pointer">Save Profile</button>
+          <p id="crew-profile-status" style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--green-dark);display:none">Saved!</p>
+        </div>
+      </div>
+
+      <div id="tab-calendar" class="tab-content">
+        <div class="server-banner" id="server-banner">Checking server connection...</div>
+        <div class="calendar-nav">
+          <button onclick="changeMonth(-1)">&larr; Prev</button>
+          <h3 id="cal-month-year"></h3>
+          <button onclick="changeMonth(1)">Next &rarr;</button>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+        <button onclick="openAddAppt()" style="margin-top:12px;padding:8px 18px;border-radius:8px;border:0;background:var(--green);color:#fff;font-weight:800;cursor:pointer">+ Add appointment</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="appt-modal">
+      <div class="modal">
+        <h3 id="appt-modal-title">Appointment</h3>
+        <input type="hidden" id="appt-id" />
+        <input type="date" id="appt-date" />
+        <input type="time" id="appt-time" />
+        <input type="text" id="appt-customer" placeholder="Customer name" />
+        <input type="text" id="appt-address" placeholder="Address" />
+        <textarea id="appt-notes" rows="3" placeholder="Notes (appear on calendar tooltip)"></textarea>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveAppointment()" id="appt-save-btn">Save</button>
+          <button class="cancel" onclick="deleteAppointment()" id="appt-delete-btn" style="background:#a7382d;color:#fff;border:0;display:none">Delete</button>
+          <button class="cancel" onclick="closeApptModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="photo-modal">
+      <div class="modal">
+        <h3>Send Photo to Customer</h3>
+        <p id="photo-customer-name" style="color:var(--muted)"></p>
+        <input type="file" id="photo-file" accept="image/*" />
+        <input type="text" id="photo-message" placeholder="Optional message with photo" />
+        <div id="photo-preview-wrap"></div>
+        <div>
+          <button onclick="sendPhoto()">Send Photo</button>
+          <button class="cancel" onclick="closePhotoModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
+      const ADMIN_PW_KEY = "adminPasswordHash";
+      const BOOKED_SLOTS_KEY = "pickupDayBookedSlots";
+
+      let calDate = new Date();
+      let calMonth = calDate.getMonth();
+      let calYear = calDate.getFullYear();
+      let appointments = [];
+      let serverOnline = false;
+      let pendingPhotoBooking = null;
+
+      const QUICK_TEXTS = [
+        { label: "Heading your way", msg: "Hi [Name]! Just wanted to let you know I'm heading your way and should be there in about 20 minutes. If you could make sure the dogs are all put away safely, that would be wonderful. I'm looking forward to taking care of your yard for you today! See you soon! \u{1F49A} - Zeph" },
+        { label: "Arrived & starting", msg: "Hi [Name]! I've just arrived and I'm starting on your yard. Everything looks great! I'll send you a photo once I'm finished so you can see the results. You relax and enjoy your day \u2014 I've got everything handled! \u{1F60A} - Zeph" },
+        { label: "All done & leaving", msg: "Hi [Name]! All finished with your yard for today. Everything is clean, tidy, and looking beautiful. I've locked the gate behind me just like always. I hope you have a wonderful day enjoying your fresh yard! A photo is on its way to your email. \u{1F33F} - Zeph" },
+        { label: "Photo sent", msg: "Hi [Name]! I just sent a photo of your beautiful yard to your email so you can see how everything turned out. It's looking so nice and fresh! If you ever need anything at all, just give me a call. It's such a pleasure taking care of your yard for you! \u{1F49A} - Zeph" },
+      ];
+
+      function hash(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; } return h.toString(36); }
+      function isFirstTime() { return !localStorage.getItem(ADMIN_PW_KEY); }
+
+      function checkAuth() {
+        if (isFirstTime()) {
+          document.getElementById("login-desc").textContent = "Set your admin password to protect customer info.";
+          document.getElementById("pw-confirm").style.display = "block";
+          document.getElementById("login-btn").textContent = "Set password";
+        }
+      }
+
+      function handleSubmit() {
+        const pw = document.getElementById("pw-input").value;
+        const err = document.getElementById("login-error");
+        const success = document.getElementById("login-success");
+        err.classList.remove("show"); success.classList.remove("show");
+        if (!pw) { err.textContent = "Please enter a password."; err.classList.add("show"); return; }
+        if (isFirstTime()) {
+          const confirm = document.getElementById("pw-confirm").value;
+          if (pw !== confirm) { err.textContent = "Passwords don't match."; err.classList.add("show"); return; }
+          if (pw.length < 4) { err.textContent = "Password must be at least 4 characters."; err.classList.add("show"); return; }
+          localStorage.setItem(ADMIN_PW_KEY, hash(pw));
+          success.textContent = "Password set! Loading..."; success.classList.add("show");
+          setTimeout(unlock, 500);
+        } else {
+          if (hash(pw) !== localStorage.getItem(ADMIN_PW_KEY)) {
+            err.textContent = "Wrong password."; err.classList.add("show");
+            document.getElementById("pw-input").value = ""; return;
+          }
+          unlock();
+        }
+      }
+
+      async function syncBookingsFromBackend() {
+        try {
+          const res = await fetch(BACKEND_URL + "/api/bookings", { signal: AbortSignal.timeout(5000) });
+          const serverBookings = await res.json();
+          const localBookings = getBookings();
+          const merged = { ...localBookings };
+          let changed = false;
+          Object.keys(serverBookings).forEach(key => {
+            if (!merged[key]) { merged[key] = serverBookings[key]; changed = true; }
+          });
+          if (changed) localStorage.setItem(BOOKED_SLOTS_KEY, JSON.stringify(merged));
+        } catch { }
+      }
+
+      async function syncBookingsToBackend() {
+        const local = getBookings();
+        if (!Object.keys(local).length) return;
+        try {
+          await fetch(BACKEND_URL + "/api/bookings/sync", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(local),
+            signal: AbortSignal.timeout(5000)
+          });
+        } catch { }
+      }
+
+      function unlock() {
+        document.getElementById("login-overlay").classList.add("hidden");
+        document.getElementById("admin-content").style.display = "block";
+        checkServer();
+        syncBookingsFromBackend().then(() => { renderTable(); renderCalendar(); });
+      }
+
+      function logout() {
+        document.getElementById("login-overlay").classList.remove("hidden");
+        document.getElementById("admin-content").style.display = "none";
+        document.getElementById("pw-input").value = "";
+        document.getElementById("pw-confirm").value = "";
+        document.getElementById("pw-confirm").style.display = "none";
+        document.getElementById("login-btn").textContent = "Unlock";
+        document.getElementById("login-desc").textContent = "Enter your password to view bookings.";
+      }
+
+      document.getElementById("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
+      document.getElementById("pw-confirm").addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
+      checkAuth();
+
+      function switchTab(name, btn) {
+        document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + name).classList.add("active");
+        if (name === "calendar") renderCalendar();
+        if (name === "waitlist") renderWaitlist();
+      }
+
+      async function checkServer() {
+        const banner = document.getElementById("server-banner");
+        try {
+          await fetch(BACKEND_URL + "/api/appointments", { method: "GET", signal: AbortSignal.timeout(3000) });
+          serverOnline = true;
+          banner.textContent = "Server online - email notifications and photo sending are active.";
+          banner.className = "server-banner server-online";
+        } catch {
+          serverOnline = false;
+          banner.textContent = "Server offline - start the backend (node server.js) to enable email notifications, photo sending, and calendar sync.";
+          banner.className = "server-banner server-offline";
+        }
+        loadAppointments();
+      }
+
+      async function loadAppointments() {
+        if (!serverOnline) { appointments = []; renderCalendar(); return; }
+        try {
+          const d = new Date(calDate);
+          const month = d.getMonth() + 1;
+          const year = d.getFullYear();
+          const [jsonRes, dbRes] = await Promise.all([
+            fetch(BACKEND_URL + "/api/appointments").catch(() => ({ json: () => [] })),
+            fetch(BACKEND_URL + "/api/calendar/month?month=" + month + "&year=" + year).catch(() => ({ json: () => [] })),
+          ]);
+          const jsonAppts = await jsonRes.json();
+          const dbAppts = await dbRes.json();
+          appointments = [...jsonAppts, ...dbAppts.map(a => ({
+            id: a.id, date: a.date, time: a.time_slot + "", customer: a.customer_name || "",
+            address: a.address || "", notes: a.notes || "", type: a.type,
+            calendarId: a.calendar_id,
+          }))];
+        } catch { appointments = []; }
+        renderCalendar();
+      }
+
+      function getBookings() { try { return JSON.parse(localStorage.getItem(BOOKED_SLOTS_KEY)) || {}; } catch { return {}; } }
+      function getNotes() { try { return JSON.parse(localStorage.getItem("adminNotes")) || {}; } catch { return {}; } }
+      function saveNotes(n) { localStorage.setItem("adminNotes", JSON.stringify(n)); }
+      function updateNote(k, v) { const n = getNotes(); n[k] = v; saveNotes(n); }
+
+      function getWaitlist() { try { return JSON.parse(localStorage.getItem("waitlist")) || []; } catch { return []; } }
+
+      function renderWaitlist() {
+        const list = getWaitlist();
+        const wrap = document.getElementById("waitlist-wrap");
+        document.getElementById("waitlist-count").textContent = list.length + " waitlisted";
+        if (list.length === 0) {
+          wrap.innerHTML = '<div class="empty"><h2>No waitlist entries</h2><p>People join the waitlist when all 15 senior yard slots are filled.</p></div>';
+          return;
+        }
+        let html = `<table><thead><tr><th>Date</th><th>Buyer</th><th>Senior</th><th>Phone</th><th>Senior Phone</th><th>Email</th><th>Address</th><th>Plan</th><th>Notes</th></tr></thead><tbody>`;
+        list.forEach((entry, i) => {
+          const date = entry.joinedAt ? new Date(entry.joinedAt).toLocaleDateString() : "\u2014";
+          html += `<tr>
+            <td>${date}</td>
+            <td><strong>${esc(entry.name)}</strong></td>
+            <td>${entry.recipientName ? esc(entry.recipientName) : "\u2014"}</td>
+            <td>${entry.phone ? esc(entry.phone) : "\u2014"}</td>
+            <td>${entry.recipientPhone ? esc(entry.recipientPhone) : "\u2014"}</td>
+            <td>${entry.email ? esc(entry.email) : "\u2014"}</td>
+            <td>${esc(entry.address)}</td>
+            <td>${esc(entry.plan)}</td>
+            <td>${esc(entry.notes)}</td>
+          </tr>`;
+        });
+        html += "</tbody></table>";
+        wrap.innerHTML = html;
+      }
+
+      async function deleteBooking(key) {
+        if (!confirm("Delete this booking?")) return;
+        const b = getBookings(); delete b[key];
+        localStorage.setItem(BOOKED_SLOTS_KEY, JSON.stringify(b));
+        const n = getNotes(); delete n[key]; saveNotes(n);
+        try { await fetch(BACKEND_URL + "/api/bookings/" + key, { method: "DELETE", signal: AbortSignal.timeout(3000) }); } catch {}
+        renderTable();
+      }
+
+      function renderTable() {
+        const bookings = getBookings();
+        const notes = getNotes();
+        const wrap = document.getElementById("table-wrap");
+        const keys = Object.keys(bookings);
+        document.getElementById("count").textContent = keys.length + " booking" + (keys.length !== 1 ? "s" : "");
+        if (keys.length === 0) {
+          wrap.innerHTML = '<div class="empty"><h2>No bookings yet</h2><p>Customers will appear here after they sign up through the site.</p></div>';
+          return;
+        }
+        let html = `<table><thead><tr>
+          <th>Name</th><th>Phone</th><th>Senior</th><th>Senior Phone</th><th>Email</th><th>Address</th><th>Plan</th><th>Crew</th><th>Dogs</th><th>Notes</th><th>Quick Text</th><th>Actions</th>
+        </tr></thead><tbody>`;
+        keys.sort().forEach(key => {
+          const b = bookings[key];
+          const note = notes[key] || b.notes || "";
+          if (!notes[key] && b.notes) { notes[key] = b.notes; saveNotes(notes); }
+          const extras = b.extras ? (Array.isArray(b.extras) ? b.extras.join(", ") : b.extras) : "";
+          const phoneDigits = b.phone ? b.phone.replace(/[^0-9]/g, "") : "";
+          const seniorDigits = b.recipientPhone ? b.recipientPhone.replace(/[^0-9]/g, "") : "";
+          const phoneLink = phoneDigits ? `tel:${phoneDigits}` : "#";
+          const foundingBadge = b.foundingMember ? '<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--green-dark);font-size:0.72rem;font-weight:900;margin-left:6px">Founder</span>' : "";
+          const name = esc(b.name);
+          html += `<tr>
+            <td><strong>${name}</strong>${foundingBadge}</td>
+            <td>${phoneDigits ? `<a href="${phoneLink}" class="call">${esc(b.phone)}</a>` : "\u2014"}</td>
+            <td>${b.recipientName ? esc(b.recipientName) : "\u2014"}</td>
+            <td>${seniorDigits ? `<a href="tel:${seniorDigits}" class="call">${esc(b.recipientPhone)}</a>` : "\u2014"}</td>
+            <td>${b.email ? esc(b.email) : "\u2014"}</td>
+            <td>${esc(b.address)}</td>
+            <td>${esc(b.plan)}</td>
+            <td>${b.preferredEmployee ? esc(b.preferredEmployee) : "\u2014"}</td>
+            <td>${b.dogs || "\u2014"}${extras ? "<br><small>" + esc(extras) + "</small>" : ""}</td>
+            <td class="notes-wrap"><textarea class="notes-input" rows="1" onchange="updateNote('${key}', this.value)" placeholder="Add note...">${esc(note)}</textarea></td>
+            <td><select onchange="sendQuickText('${key}', this.value, this)" style="padding:4px 6px;border-radius:6px;border:1px solid var(--line);font-size:0.78rem;font-weight:700;">
+              <option value="">Send text...</option>
+              ${QUICK_TEXTS.map(t => `<option value="${t.label}">${t.label}</option>`).join("")}
+            </select></td>
+            <td class="actions">
+              <a href="${phoneLink}" class="call">Call</a>
+              ${phoneDigits || seniorDigits ? `<a href="#" class="call" style="border-color:#4a9e4a;color:#2d7a2d" onclick="openGroupSms('${key}');return false">Text buyer &amp; senior</a>` : ""}
+              ${b.email ? `<a href="#" class="call" style="border-color:#4a9e4a;color:#4a9e4a" onclick="openPhotoModal('${key}');return false">Photo</a>` : ""}
+              <button onclick="deleteBooking('${key}')" style="color:#a7382d;border-color:#a7382d">Delete</button>
+            </td>
+          </tr>`;
+        });
+        html += "</tbody></table>";
+        wrap.innerHTML = html;
+      }
+
+      function openGroupSms(key) {
+        const b = getBookings()[key];
+        if (!b) return;
+        const buyerDigits = b.phone ? b.phone.replace(/[^0-9]/g, "") : "";
+        const seniorDigits = b.recipientPhone ? b.recipientPhone.replace(/[^0-9]/g, "") : "";
+        const phones = [buyerDigits, seniorDigits].filter(Boolean).join(";");
+        if (!phones) return alert("No phone numbers available.");
+        const name = b.name ? b.name.split(" ")[0] : "there";
+        const msg = `Hi ${name}! This is Zeph from popsyard.com. Just checking in about your yard care — everything is going great! If you ever need anything, just reply to this message. \u{1F49A}`;
+        window.open(`sms:${phones}?body=${encodeURIComponent(msg)}`, "_blank");
+      }
+
+      function sendQuickText(key, label, el) {
+        if (!label) return;
+        const b = getBookings()[key];
+        if (!b || !b.phone) return alert("No phone number for this customer.");
+        const text = QUICK_TEXTS.find(t => t.label === label);
+        if (!text) return;
+        const msg = text.msg.replace("[Name]", b.name.split(" ")[0]);
+        const phoneDigits = b.phone.replace(/[^0-9]/g, "");
+        window.open(`sms:${phoneDigits}?body=${encodeURIComponent(msg)}`, "_blank");
+        if (el) el.value = "";
+      }
+
+      function esc(str) { if (!str) return ""; const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+
+      function exportData() {
+        const bookings = getBookings();
+        const notes = getNotes();
+        const keys = Object.keys(bookings);
+        if (!keys.length) return alert("No bookings to export.");
+        let csv = "Buyer Name,Buyer Phone,Senior Name,Senior Phone,Email,Address,Dogs,Plan,Preferred Crew,Notes,Internal Notes\n";
+        keys.sort().forEach(key => {
+          const b = bookings[key];
+          const row = [b.name, b.phone, b.recipientName || "", b.recipientPhone || "", b.email || "", b.address, b.dogs, b.plan, b.preferredEmployee || "", b.notes || "", notes[key] || ""];
+          csv += row.map(v => `"${(v || "").replace(/"/g, '""')}"`).join(",") + "\n";
+        });
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = "bookings.csv"; a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      async function addTestBooking() {
+        const bookings = getBookings();
+        const key = Date.now().toString();
+        const founding = Object.keys(bookings).length < 10;
+        const newBooking = {
+          name: "Test Senior Client", phone: "555-123-4567", recipientName: "Grandma Betty", recipientPhone: "555-987-6543", email: "test@example.com",
+          address: "123 Grandma Ln, Dallas, OR", dogs: "2 dogs",
+          plan: "Silver Membership ($179.99/mo)",
+          notes: "Gate code: 1234. Prefers morning visits.",
+          bookedAt: new Date().toISOString(),
+          foundingMember: founding,
+        };
+        bookings[key] = newBooking;
+        localStorage.setItem(BOOKED_SLOTS_KEY, JSON.stringify(bookings));
+        try { await fetch(BACKEND_URL + "/api/bookings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newBooking), signal: AbortSignal.timeout(3000) }); } catch {}
+        renderTable();
+        alert("Test booking added. Founding member: " + (founding ? "Yes" : "No"));
+      }
+
+      function openPhotoModal(bookingKey) {
+        const bookings = getBookings();
+        const b = bookings[bookingKey];
+        if (!b || !b.email) return alert("No email on file for this customer.");
+        pendingPhotoBooking = bookingKey;
+        document.getElementById("photo-customer-name").textContent = "Sending to: " + b.name + " (" + b.email + ")" + (b.recipientEmail ? " + senior: " + b.recipientEmail : "");
+        document.getElementById("photo-file").value = "";
+        document.getElementById("photo-message").value = "";
+        document.getElementById("photo-preview-wrap").innerHTML = "";
+        document.getElementById("photo-modal").classList.add("show");
+      }
+
+      function closePhotoModal() {
+        document.getElementById("photo-modal").classList.remove("show");
+        pendingPhotoBooking = null;
+      }
+
+      async function sendPhoto() {
+        const booking = getBookings()[pendingPhotoBooking];
+        if (!booking || !serverOnline) {
+          alert(serverOnline ? "Booking not found." : "Server offline. Start the backend to send photos.");
+          return;
+        }
+        const file = document.getElementById("photo-file").files[0];
+        if (!file) return alert("Please select a photo.");
+        const msg = document.getElementById("photo-message").value;
+        const formData = new FormData();
+        formData.append("photo", file);
+        formData.append("customerEmail", booking.email);
+        formData.append("customerName", booking.name);
+        if (booking.recipientEmail) formData.append("seniorEmail", booking.recipientEmail);
+        formData.append("message", msg);
+        try {
+          const res = await fetch(BACKEND_URL + "/api/send-photo", { method: "POST", body: formData });
+          const data = await res.json();
+          if (data.success) {
+            alert("Photo sent to " + booking.email + (data.emailSent ? "" : " (email sending not configured - check email-config.json)"));
+            closePhotoModal();
+          } else {
+            alert("Failed to send photo.");
+          }
+        } catch {
+          alert("Server error. Make sure the backend is running.");
+        }
+      }
+
+      document.getElementById("photo-file").addEventListener("change", function () {
+        const wrap = document.getElementById("photo-preview-wrap");
+        wrap.innerHTML = "";
+        if (this.files && this.files[0]) {
+          const img = document.createElement("img");
+          img.src = URL.createObjectURL(this.files[0]);
+          img.className = "photo-preview";
+          img.style.display = "block";
+          wrap.appendChild(img);
+        }
+      });
+
+      function renderCalendar() {
+        const grid = document.getElementById("calendar-grid");
+        const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        document.getElementById("cal-month-year").textContent = monthNames[calMonth] + " " + calYear;
+
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const today = new Date();
+        const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+
+        const apptsByDate = {};
+        appointments.forEach(a => {
+          if (!a.date) return;
+          if (!apptsByDate[a.date]) apptsByDate[a.date] = [];
+          apptsByDate[a.date].push(a);
+        });
+
+        let html = "";
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        dayNames.forEach(d => { html += `<div class="calendar-header">${d}</div>`; });
+
+        for (let i = 0; i < firstDay; i++) {
+          html += `<div class="calendar-day other-month"></div>`;
+        }
+
+        const conflictColors = {};
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = calYear + "-" + String(calMonth + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+          const isToday = dateStr === todayStr;
+          const dayAppts = apptsByDate[dateStr] || [];
+
+          const timeSlots = {};
+          dayAppts.forEach(a => {
+            const slot = a.time || a.time_slot || "";
+            timeSlots[slot] = (timeSlots[slot] || 0) + 1;
+          });
+          Object.keys(timeSlots).forEach(slot => {
+            if (timeSlots[slot] > 1) conflictColors[dateStr] = true;
+          });
+
+          html += `<div class="calendar-day ${isToday ? "today" : ""}" onclick="openAddAppt('${dateStr}')">
+            <div class="day-num">${day}</div>
+            ${dayAppts.slice(0, 3).map(a => {
+              const type = a.type || "manual";
+              const isConflict = conflictColors[dateStr];
+              return `<div class="appt appt-type-${type}${isConflict ? ' appt-conflict' : ''}" draggable="true" 
+                ondragstart="event.dataTransfer.setData('text/plain', '${a.id}')"
+                onclick="event.stopPropagation();openEditAppt('${a.id}')" title="${esc(a.notes || "")} ${isConflict ? '⚠️ Conflict' : ''}">
+                ${a.time || a.time_slot || ""} ${esc(a.customer || "")}${a.notes ? ' <span style="opacity:0.5">📝</span>' : ""}
+              </div>`;
+            }).join("")}
+            ${dayAppts.length > 3 ? `<div class="appt" style="color:var(--muted);cursor:default">+${dayAppts.length - 3} more</div>` : ""}
+          </div>`;
+        }
+
+        grid.innerHTML = html;
+
+        grid.addEventListener("dragover", e => e.preventDefault());
+        grid.addEventListener("drop", async e => {
+          e.preventDefault();
+          const apptId = e.dataTransfer.getData("text/plain");
+          const dayDiv = e.target.closest(".calendar-day");
+          if (!apptId || !dayDiv) return;
+          const dateStr = dayDiv.querySelector(".day-num");
+          if (!dateStr) return;
+          const year = calYear;
+          const month = String(calMonth + 1).padStart(2, "0");
+          const dayNum = String(dateStr.textContent.trim()).padStart(2, "0");
+          const newDate = year + "-" + month + "-" + dayNum;
+          if (!confirm("Move this appointment to " + newDate + "?\nClick OK for this one only, Cancel to reschedule all future.")) {
+            if (!confirm("Reschedule all future visits to " + newDate + " (same day of week)?")) return;
+          }
+          try {
+            await fetch(BACKEND_URL + "/api/calendar/appointments/" + apptId, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: newDate, timeSlot: null, status: "scheduled" }) });
+            await loadAppointments();
+          } catch { alert("Failed to reschedule. Is the backend running?"); }
+        });
+      }
+
+      function changeMonth(dir) {
+        calMonth += dir;
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        renderCalendar();
+      }
+
+      function openAddAppt(dateStr) {
+        if (!serverOnline) { alert("Start the backend (node server.js) to manage appointments."); return; }
+        document.getElementById("appt-modal-title").textContent = "Add Appointment";
+        document.getElementById("appt-id").value = "";
+        document.getElementById("appt-date").value = dateStr || "";
+        document.getElementById("appt-time").value = "";
+        document.getElementById("appt-customer").value = "";
+        document.getElementById("appt-address").value = "";
+        document.getElementById("appt-notes").value = "";
+        document.getElementById("appt-delete-btn").style.display = "none";
+        document.getElementById("appt-save-btn").textContent = "Save";
+        document.getElementById("appt-modal").classList.add("show");
+      }
+
+      function openEditAppt(id) {
+        if (!serverOnline) { alert("Start the backend (node server.js) to manage appointments."); return; }
+        const appt = appointments.find(a => a.id === id);
+        if (!appt) return alert("Appointment not found.");
+        document.getElementById("appt-modal-title").textContent = "Edit Appointment";
+        document.getElementById("appt-id").value = appt.id;
+        document.getElementById("appt-date").value = appt.date || "";
+        document.getElementById("appt-time").value = appt.time || "";
+        document.getElementById("appt-customer").value = appt.customer || "";
+        document.getElementById("appt-address").value = appt.address || "";
+        document.getElementById("appt-notes").value = appt.notes || "";
+        document.getElementById("appt-delete-btn").style.display = "inline-block";
+        document.getElementById("appt-save-btn").textContent = "Save Changes";
+        document.getElementById("appt-modal").classList.add("show");
+      }
+
+      function closeApptModal() {
+        document.getElementById("appt-modal").classList.remove("show");
+      }
+
+      async function saveAppointment() {
+        const id = document.getElementById("appt-id").value;
+        const data = {
+          date: document.getElementById("appt-date").value,
+          time: document.getElementById("appt-time").value,
+          customer: document.getElementById("appt-customer").value,
+          address: document.getElementById("appt-address").value,
+          notes: document.getElementById("appt-notes").value,
+        };
+        if (!data.date || !data.customer) return alert("Date and customer name required.");
+        try {
+          if (id) {
+            await fetch(BACKEND_URL + "/api/appointments/" + id, { method: "DELETE" });
+          }
+          await fetch(BACKEND_URL + "/api/appointments", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+          });
+          closeApptModal();
+          await loadAppointments();
+        } catch { alert("Failed to save. Is the backend running?"); }
+      }
+
+      async function deleteAppointment() {
+        const id = document.getElementById("appt-id").value;
+        if (!id) return;
+        if (!confirm("Delete this appointment?")) return;
+        try {
+          await fetch(BACKEND_URL + "/api/appointments/" + id, { method: "DELETE" });
+          closeApptModal();
+          await loadAppointments();
+        } catch { alert("Failed to delete. Is the backend running?"); }
+      }
+
+      async function phoneOnboard() {
+        const status = document.getElementById("onboard-status");
+        const data = {
+          name: document.getElementById("on-name").value,
+          phone: document.getElementById("on-phone").value,
+          email: document.getElementById("on-email").value || null,
+          seniorName: document.getElementById("on-senior-name").value || document.getElementById("on-name").value,
+          seniorPhone: document.getElementById("on-senior-phone").value || document.getElementById("on-phone").value,
+          address: document.getElementById("on-address").value,
+          dogs: document.getElementById("on-dogs").value,
+          notes: document.getElementById("on-notes").value || null,
+          plan: document.getElementById("on-plan").value,
+          dayOfWeek: document.getElementById("on-day").value,
+          timeSlot: document.getElementById("on-time").value,
+        };
+        if (!data.name || !data.phone || !data.address) {
+          status.textContent = "Buyer name, phone, and address required."; status.style.display = "block"; status.style.color = "#a7382d"; return;
+        }
+        status.textContent = "Creating customer..."; status.style.display = "block"; status.style.color = "var(--muted)";
+        try {
+          const custRes = await fetch(BACKEND_URL + "/api/customers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+          const cust = await custRes.json();
+          if (!cust.success) throw new Error(cust.error);
+          if (data.plan === "one_time") {
+            status.textContent = "One-time clean: customer created. Send Stripe invoice link via text.";
+          } else {
+            const subRes = await fetch(BACKEND_URL + "/api/subscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customerId: cust.customerId, plan: data.plan, dayOfWeek: data.dayOfWeek, timeSlot: data.timeSlot }) });
+            const sub = await subRes.json();
+            if (!sub.success) throw new Error(sub.error);
+            status.textContent = `Subscription created! ${sub.appointments} appointments scheduled. Founding member: ${sub.foundingMember ? "Yes" : "No"}. Send customer the payment link.`;
+            status.style.color = "var(--green-dark)";
+          }
+          document.getElementById("on-name").value = ""; document.getElementById("on-phone").value = ""; document.getElementById("on-email").value = "";
+          document.getElementById("on-senior-name").value = ""; document.getElementById("on-senior-phone").value = "";
+          document.getElementById("on-address").value = ""; document.getElementById("on-notes").value = "";
+          if (serverOnline) loadAppointments();
+        } catch (err) {
+          status.textContent = "Error: " + err.message; status.style.color = "#a7382d";
+        }
+      }
+
+      async function checkServiceStatus() {
+        const grid = document.getElementById("service-status-grid");
+        try {
+          const res = await fetch(BACKEND_URL + "/api/status");
+          const data = await res.json();
+          const services = [
+            { name: "Stripe", key: "stripe", desc: "Payment processing" },
+            { name: "Google Calendar", key: "calendar", desc: "Appointment sync" },
+            { name: "Twilio SMS", key: "twilio", desc: "Text notifications" },
+            { name: "Email (SMTP)", key: "email", desc: "Order notifications" },
+          ];
+          grid.innerHTML = services.map(s => `<div style="padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${data[s.key] ? 'var(--green)' : '#a7382d'}"></span>
+              <strong>${s.name}</strong>
+            </div>
+            <p style="margin:0;font-size:0.82rem;color:var(--muted)">${data[s.key] ? 'Connected' : 'Not configured'} — ${s.desc}</p>
+          </div>`).join("");
+        } catch { grid.innerHTML = '<p style="color:var(--muted)">Could not reach backend.</p>'; }
+      }
+
+      const CREW_KEY = "crewProfile";
+
+      function loadCrewProfile() {
+        try { return JSON.parse(localStorage.getItem(CREW_KEY)) || {}; } catch { return {}; }
+      }
+
+      function populateCrewForm() {
+        const profile = loadCrewProfile();
+        document.getElementById("crew-name-input").value = profile.name || "";
+        document.getElementById("crew-phone-input").value = profile.phone || "";
+        document.getElementById("crew-title-input").value = profile.title || "";
+        document.getElementById("crew-bio-input").value = profile.bio || "";
+        if (profile.photo) {
+          const preview = document.getElementById("crew-photo-preview");
+          preview.innerHTML = `<img src="${profile.photo}" style="width:100%;height:100%;object-fit:cover" />`;
+          preview.style.display = "block";
+        }
+      }
+
+      document.getElementById("crew-photo-input").addEventListener("change", function() {
+        if (this.files && this.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const preview = document.getElementById("crew-photo-preview");
+            preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover" />`;
+            preview.style.display = "block";
+          };
+          reader.readAsDataURL(this.files[0]);
+        }
+      });
+
+      function saveCrewProfile() {
+        const profile = {
+          name: document.getElementById("crew-name-input").value,
+          phone: document.getElementById("crew-phone-input").value,
+          title: document.getElementById("crew-title-input").value,
+          bio: document.getElementById("crew-bio-input").value,
+          photo: document.querySelector("#crew-photo-preview img") ? document.querySelector("#crew-photo-preview img").src : "",
+        };
+        localStorage.setItem(CREW_KEY, JSON.stringify(profile));
+        const status = document.getElementById("crew-profile-status");
+        status.style.display = "block";
+        setTimeout(() => { status.style.display = "none"; }, 2000);
+      }
+    </script>
+
+    <div id="tab-integrations" class="tab-content">
+      <h3>&#x1F517; Service Status</h3>
+      <div id="service-status-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px"></div>
+      <p style="margin-top:16px;color:var(--muted);font-size:0.85rem">Configure via Railway env vars: <code>STRIPE_SECRET_KEY</code>, <code>TWILIO_ACCOUNT_SID</code>, <code>GOOGLE_SERVICE_ACCOUNT_JSON</code></p>
+    </div>
+
+    <script>
+      populateCrewForm();
+      checkServiceStatus();
+    </script>
+  </body>
+</html>

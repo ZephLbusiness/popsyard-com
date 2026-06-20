@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book — popsyard.com</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .book-page { max-width: 780px; margin: 0 auto; padding: 40px clamp(18px, 4vw, 56px); }
+      .book-page h1 { font-size: 2rem; margin-bottom: 4px; }
+      .book-page .sub { color: var(--muted); margin-bottom: 32px; }
+      .step-indicator { display: flex; gap: 8px; margin-bottom: 32px; }
+      .step-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 0.82rem; background: var(--line); color: var(--muted); }
+      .step-dot.active { background: var(--green); color: #fff; }
+      .step-dot.done { background: var(--green-dark); color: #fff; }
+      .step-label { flex: 1; padding-left: 4px; color: var(--muted); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; align-self: center; }
+      .step-label.active { color: var(--ink); }
+
+      .step { display: none; }
+      .step.active { display: block; }
+      .step h2 { font-size: 1.5rem; margin-bottom: 16px; }
+      .step p { margin-bottom: 20px; }
+
+      .plan-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+      .plan-card { padding: 20px; border: 2px solid var(--line); border-radius: 10px; cursor: pointer; background: var(--surface); transition: all 0.15s; text-align: center; }
+      .plan-card:hover { border-color: var(--green); }
+      .plan-card.selected { border-color: var(--green-dark); background: var(--surface-soft); }
+      .plan-card h3 { margin-bottom: 4px; font-size: 1.1rem; }
+      .plan-card .price { font-size: 1.8rem; font-weight: 900; color: var(--green-dark); margin-bottom: 8px; }
+      .plan-card p { font-size: 0.85rem; margin: 0; color: var(--muted); }
+
+      .time-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+      .time-btn { padding: 12px 24px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font-weight: 800; font-size: 1rem; transition: all 0.15s; }
+      .time-btn:hover { border-color: var(--green); }
+      .time-btn.selected { border-color: var(--green-dark); background: var(--green-dark); color: #fff; }
+
+      .day-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px; }
+      .day-btn { padding: 14px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font-weight: 800; text-align: center; transition: all 0.15s; }
+      .day-btn:hover { border-color: var(--green); }
+      .day-btn.selected { border-color: var(--green-dark); background: var(--green-dark); color: #fff; }
+      .day-btn .day-abbr { font-size: 0.78rem; text-transform: uppercase; color: var(--muted); }
+      .day-btn.selected .day-abbr { color: rgba(255,255,255,0.7); }
+
+      .conflict-banner { background: #fff3cd; color: #856404; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; font-weight: 700; }
+      .conflict-banner select { margin: 0 6px; padding: 4px 8px; border-radius: 6px; border: 1px solid #856404; background: #fff; font-weight: 700; }
+
+      .book-form { display: grid; gap: 14px; }
+      .book-form label { display: block; }
+      .book-form label span { display: block; margin-bottom: 4px; font-size: 0.82rem; font-weight: 800; color: var(--muted); text-transform: uppercase; }
+      .book-form input, .book-form textarea, .book-form select { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 1rem; background: var(--surface); color: var(--ink); }
+      .book-form textarea { resize: vertical; min-height: 60px; }
+      .book-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+      .nav-buttons { display: flex; gap: 12px; margin-top: 24px; }
+      .nav-buttons button { padding: 12px 32px; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; border: 0; }
+      .nav-buttons .back { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+      .nav-buttons .next { background: var(--green); color: #fff; }
+      .nav-buttons .next:hover { background: var(--green-dark); }
+      .nav-buttons .next:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .review-box { background: var(--surface-soft); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+      .review-box h3 { margin-bottom: 4px; }
+      .review-box p { margin: 2px 0; font-size: 0.92rem; }
+      .review-box .label { color: var(--muted); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
+
+      #loading-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.85); display: none; place-items: center; }
+      #loading-overlay.show { display: grid; }
+      .spinner { width: 40px; height: 40px; border: 4px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      @media (max-width: 640px) {
+        .plan-cards { grid-template-columns: 1fr; }
+        .day-grid { grid-template-columns: repeat(3, 1fr); }
+        .book-form .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body style="background:var(--bg)">
+    <header class="topbar" style="position:static">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">Y</span>
+        <span>popsyard.com</span>
+      </a>
+      <p class="single-concept">Book Your Visit</p>
+      <a class="nav-cta" href="index.html" style="background:var(--surface);color:var(--ink);border:1px solid var(--line)">Back to site</a>
+    </header>
+
+    <div class="book-page">
+      <h1>Book Your Yard Care</h1>
+      <p class="sub">Choose a plan, pick your day & time, and we'll handle the rest.</p>
+
+      <div class="step-indicator" id="step-indicator">
+        <span class="step-dot active" id="sdot-1">1</span><span class="step-label active" id="slabel-1">Plan</span>
+        <span class="step-dot" id="sdot-2">2</span><span class="step-label" id="slabel-2">Day &amp; Time</span>
+        <span class="step-dot" id="sdot-3">3</span><span class="step-label" id="slabel-3">Info</span>
+        <span class="step-dot" id="sdot-4">4</span><span class="step-label" id="slabel-4">Review &amp; Pay</span>
+      </div>
+
+      <div id="loading-overlay"><div class="spinner"></div></div>
+
+      <div id="step-1" class="step active">
+        <h2>Choose your plan</h2>
+        <p>Select the plan that fits your needs. All plans include poop scooping, plant watering, and kennel cleaning.</p>
+        <div class="plan-cards">
+          <div class="plan-card" data-plan="one_time" onclick="selectPlan(this, 'one_time')">
+            <h3>One-Time Clean</h3>
+            <div class="price">$59.99</div>
+            <p>Single deep clean. The first clean is always free (at any new location)*.</p>
+          </div>
+          <div class="plan-card featured" data-plan="silver" onclick="selectPlan(this, 'silver')">
+            <h3>Silver Membership</h3>
+            <div class="price">$159.99</div>
+            <p>4 weekly visits. Photo updates, gate check, same crew.</p>
+          </div>
+          <div class="plan-card" data-plan="gold" onclick="selectPlan(this, 'gold')">
+            <h3>Gold Membership</h3>
+            <div class="price">$359.99</div>
+            <p>Everything in Silver + 2 times the visits, printed report.</p>
+          </div>
+        </div>
+        <div class="nav-buttons">
+          <button class="next" onclick="goStep(2)" disabled id="step1-next">Next: Day &amp; Time</button>
+        </div>
+      </div>
+
+      <div id="step-2" class="step">
+        <h2>Pick your day &amp; time</h2>
+        <p>Choose a weekly day (Mon–Sat) and time slot. Subs include 4 visits.</p>
+        <div class="day-grid" id="day-grid"></div>
+        <div class="time-grid">
+          <button class="time-btn" data-time="11am" onclick="selectTime(this)">11:00 AM</button>
+          <button class="time-btn" data-time="3pm" onclick="selectTime(this)">3:00 PM</button>
+          <button class="time-btn" data-time="4pm" onclick="selectTime(this)">4:00 PM</button>
+          <button class="time-btn" data-time="5pm" onclick="selectTime(this)">5:00 PM</button>
+        </div>
+        <div id="conflict-area"></div>
+        <div class="nav-buttons">
+          <button class="back" onclick="goStep(1)">Back</button>
+          <button class="next" onclick="goStep(3)" disabled id="step2-next">Next: Your Info</button>
+        </div>
+      </div>
+
+      <div id="step-3" class="step">
+        <h2>Your information</h2>
+        <p>Tell us about yourself and the senior we'll be caring for.</p>
+        <div class="book-form">
+          <div class="row">
+            <label><span>Your name</span><input type="text" id="f-name" placeholder="Full name" required /></label>
+            <label><span>Your phone</span><input type="tel" id="f-phone" placeholder="Best number" required /></label>
+          </div>
+          <div class="row">
+            <label><span>Senior's name <small style="font-weight:400;color:var(--muted)">(skip if for you)</small></span><input type="text" id="f-senior-name" placeholder="Grandparent's name" /></label>
+            <label><span>Senior's phone <small style="font-weight:400;color:var(--muted)">(skip if for you)</small></span><input type="tel" id="f-senior-phone" placeholder="For day-of texts" /></label>
+          </div>
+          <label><span>Your email</span><input type="email" id="f-email" placeholder="Email address" /></label>
+          <label><span>Service address</span><input type="text" id="f-address" placeholder="Street, city, ZIP" required /></label>
+          <div class="row">
+            <label><span>Dogs</span><select id="f-dogs"><option>1 dog</option><option>2 dogs</option><option>3+ dogs</option></select></label>
+          </div>
+          <label><span>Anything else? (gate code, notes, etc.)</span><textarea id="f-notes" rows="3"></textarea></label>
+        </div>
+        <div class="nav-buttons">
+          <button class="back" onclick="goStep(2)">Back</button>
+          <button class="next" onclick="goStep(4)" disabled id="step3-next">Next: Review &amp; Pay</button>
+        </div>
+      </div>
+
+      <div id="step-4" class="step">
+        <h2>Review &amp; pay</h2>
+        <p>Please review your booking details before payment.</p>
+        <div class="review-box" id="review-plan"><h3 id="rv-plan-name">Silver Membership</h3><p id="rv-plan-price">$159.99 / 4 weeks</p></div>
+        <div class="review-box"><p><span class="label">Day</span><br><span id="rv-day"></span></p><p><span class="label">Time</span><br><span id="rv-time"></span></p></div>
+        <div class="review-box"><p><span class="label">Your name</span><br><span id="rv-name"></span></p><p><span class="label">Phone</span><br><span id="rv-phone"></span></p><p><span class="label">Email</span><br><span id="rv-email"></span></p></div>
+        <div class="review-box"><p><span class="label">Senior</span><br><span id="rv-senior-name"></span></p><p><span class="label">Senior phone</span><br><span id="rv-senior-phone"></span></p><p><span class="label">Address</span><br><span id="rv-address"></span></p><p><span class="label">Dogs</span><br><span id="rv-dogs"></span></p></div>
+        <div class="nav-buttons">
+          <button class="back" onclick="goStep(3)">Back</button>
+          <button class="next" id="pay-btn" onclick="handlePayment()">Pay &amp; Confirm</button>
+        </div>
+        <p id="pay-message" style="margin-top:12px;font-size:0.85rem;font-weight:700;color:var(--muted);display:none"></p>
+      </div>
+    </div>
+
+    <script>
+      const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
+
+      let booking = { plan: null, dayOfWeek: null, dayName: null, timeSlot: null, conflicts: null };
+
+      const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const DAY_ABBR = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+
+      function renderDays() {
+        const grid = document.getElementById("day-grid");
+        grid.innerHTML = DAYS.map((d, i) =>
+          `<div class="day-btn" data-day="${d}" onclick="selectDay(this,'${d}')"><span class="day-abbr">${DAY_ABBR[i]}</span><br>${d}</div>`
+        ).join("");
+      }
+      renderDays();
+
+      try {
+        const saved = JSON.parse(localStorage.getItem("savedCustomerInfo"));
+        if (saved) {
+          if (saved.name) document.getElementById("f-name").value = saved.name;
+          if (saved.phone) document.getElementById("f-phone").value = saved.phone;
+          if (saved.email) document.getElementById("f-email").value = saved.email;
+          if (saved.address) document.getElementById("f-address").value = saved.address;
+          if (saved.recipientName) document.getElementById("f-senior-name").value = saved.recipientName;
+          if (saved.recipientPhone) document.getElementById("f-senior-phone").value = saved.recipientPhone;
+        }
+      } catch {}
+
+      function selectPlan(el, plan) {
+        document.querySelectorAll(".plan-card").forEach(c => c.classList.remove("selected"));
+        el.classList.add("selected");
+        booking.plan = plan;
+        document.getElementById("step1-next").disabled = false;
+      }
+
+      function selectDay(el, day) {
+        document.querySelectorAll(".day-btn").forEach(b => b.classList.remove("selected"));
+        el.classList.add("selected");
+        booking.dayOfWeek = day;
+        booking.dayName = DAYS.indexOf(day) >= 0 ? day : "";
+        checkConflicts();
+        tryNext2();
+      }
+
+      function selectTime(el) {
+        document.querySelectorAll(".time-btn").forEach(b => b.classList.remove("selected"));
+        el.classList.add("selected");
+        booking.timeSlot = el.dataset.time;
+        checkConflicts();
+        tryNext2();
+      }
+
+      async function checkConflicts() {
+        const area = document.getElementById("conflict-area");
+        area.innerHTML = "";
+        if (!booking.dayOfWeek || !booking.timeSlot || booking.plan === "one_time") return;
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/check-conflicts?dayOfWeek=${booking.dayOfWeek}&timeSlot=${booking.timeSlot}`);
+          const data = await res.json();
+          booking.conflicts = data;
+          if (data.hasConflict && data.conflictingDates.length) {
+            let html = '<div class="conflict-banner">⚠️ ';
+            data.conflictingDates.forEach((date, idx) => {
+              const alts = data.alternatives[date] || [];
+              const displayDate = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+              if (alts.length) {
+                html += `${displayDate} at ${booking.timeSlot} is booked. `;
+                html += `Pick an alternative: <select onchange="resolveConflict('${date}', this.value)">`;
+                html += `<option value="">Choose...</option>`;
+                alts.forEach(t => html += `<option value="${t}">${t}</option>`);
+                html += `</select>`;
+              } else {
+                html += `${displayDate} at ${booking.timeSlot} is booked with no alternatives that day.`;
+              }
+              if (idx < data.conflictingDates.length - 1) html += "<br>";
+            });
+            html += "</div>";
+            area.innerHTML = html;
+          }
+        } catch {}
+      }
+
+      function resolveConflict(date, newTime) {
+        if (!booking.conflicts) booking.conflicts = { alternativeTimes: {} };
+        if (!booking.conflicts.alternativeTimes) booking.conflicts.alternativeTimes = {};
+        booking.conflicts.alternativeTimes[date] = newTime || null;
+        tryNext2();
+      }
+
+      function tryNext2() {
+        document.getElementById("step2-next").disabled = !(booking.dayOfWeek && booking.timeSlot);
+      }
+
+      function goStep(n) {
+        if (n === 3 && (!document.getElementById("f-name").value || !document.getElementById("f-phone").value || !document.getElementById("f-address").value)) {
+          document.getElementById("step3-next").disabled = true;
+        }
+        if (n === 3) {
+          document.getElementById("step3-next").disabled = !(document.getElementById("f-name").value && document.getElementById("f-phone").value && document.getElementById("f-address").value);
+        }
+        document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+        document.getElementById("step-" + n).classList.add("active");
+        document.querySelectorAll(".step-dot").forEach((d, i) => {
+          d.classList.toggle("active", i + 1 === n);
+          d.classList.toggle("done", i + 1 < n);
+        });
+        document.querySelectorAll(".step-label").forEach((l, i) => {
+          l.classList.toggle("active", i + 1 <= n);
+        });
+        if (n === 4) populateReview();
+      }
+
+      document.getElementById("f-name").addEventListener("input", checkStep3);
+      document.getElementById("f-phone").addEventListener("input", checkStep3);
+      document.getElementById("f-address").addEventListener("input", checkStep3);
+      function checkStep3() {
+        document.getElementById("step3-next").disabled = !(document.getElementById("f-name").value && document.getElementById("f-phone").value && document.getElementById("f-address").value);
+      }
+
+      function populateReview() {
+        const plans = { silver: ["Silver Membership", "$159.99 / 4 weeks"], gold: ["Gold Membership", "$359.99 / 4 weeks"], one_time: ["One-Time Clean", "$59.99"] };
+        const p = plans[booking.plan] || ["", ""];
+        document.getElementById("rv-plan-name").textContent = p[0];
+        document.getElementById("rv-plan-price").textContent = p[1];
+        document.getElementById("rv-day").textContent = booking.dayOfWeek || "One-time";
+        document.getElementById("rv-time").textContent = booking.plan === "one_time" ? "Scheduled once" : (booking.timeSlot || "");
+        document.getElementById("rv-name").textContent = document.getElementById("f-name").value;
+        document.getElementById("rv-phone").textContent = document.getElementById("f-phone").value;
+        document.getElementById("rv-email").textContent = document.getElementById("f-email").value || "—";
+        document.getElementById("rv-senior-name").textContent = document.getElementById("f-senior-name").value || "—";
+        document.getElementById("rv-senior-phone").textContent = document.getElementById("f-senior-phone").value || "—";
+        document.getElementById("rv-address").textContent = document.getElementById("f-address").value;
+        document.getElementById("rv-dogs").textContent = document.getElementById("f-dogs").value;
+      }
+
+      async function handlePayment() {
+        const btn = document.getElementById("pay-btn");
+        const msg = document.getElementById("pay-message");
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+        msg.style.display = "none";
+
+        try {
+          const body = {
+            name: document.getElementById("f-name").value,
+            phone: document.getElementById("f-phone").value,
+            email: document.getElementById("f-email").value || null,
+            seniorName: document.getElementById("f-senior-name").value || null,
+            seniorPhone: document.getElementById("f-senior-phone").value || null,
+            address: document.getElementById("f-address").value,
+            dogs: document.getElementById("f-dogs").value,
+            notes: document.getElementById("f-notes").value || null,
+            plan: booking.plan,
+            dayOfWeek: booking.dayOfWeek,
+            timeSlot: booking.timeSlot,
+            conflicts: booking.conflicts?.alternativeTimes || null,
+          };
+
+          const loading = document.getElementById("loading-overlay");
+          loading.classList.add("show");
+
+          const customerRes = await fetch(BACKEND_URL + "/api/customers", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+          });
+          const customerData = await customerRes.json();
+          if (!customerData.success) throw new Error(customerData.error || "Failed to create customer");
+
+          if (booking.plan === "one_time") {
+            const succUrl = window.location.origin + "/book.html?success=1&plan=one_time&customer=" + customerData.customerId;
+            const cancUrl = window.location.origin + "/book.html?canceled=1";
+            const stripeRes = await fetch(BACKEND_URL + "/api/stripe/create-checkout", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ plan: "one_time", customerId: customerData.customerId, successUrl: succUrl, cancelUrl: cancUrl })
+            });
+            const stripeData = await stripeRes.json();
+            if (stripeData.url) { window.location.href = stripeData.url; return; }
+            throw new Error("Stripe redirect failed");
+          }
+
+          const subRes = await fetch(BACKEND_URL + "/api/subscriptions", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customerId: customerData.customerId,
+              plan: booking.plan,
+              dayOfWeek: booking.dayOfWeek,
+              timeSlot: booking.timeSlot,
+            })
+          });
+          const subData = await subRes.json();
+          if (!subData.success) throw new Error(subData.error || "Subscription creation failed");
+
+          const succUrl = window.location.origin + "/book.html?success=1&plan=" + booking.plan + "&sub=" + subData.subscriptionId;
+          const cancUrl = window.location.origin + "/book.html?canceled=1";
+          const stripeRes = await fetch(BACKEND_URL + "/api/stripe/create-checkout", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan: booking.plan, customerId: customerData.customerId, successUrl: succUrl, cancelUrl: cancUrl })
+          });
+          const notify = { name: body.name, phone: body.phone, email: body.email, address: body.address, dogs: body.dogs, plan: booking.plan, notes: body.notes };
+          fetch(BACKEND_URL + "/api/notify-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(notify) }).catch(() => {});
+
+          const stripeData = await stripeRes.json();
+          if (stripeData.url) { window.location.href = stripeData.url; return; }
+
+          loading.classList.remove("show");
+          showSuccess();
+        } catch (err) {
+          document.getElementById("loading-overlay").classList.remove("show");
+          msg.textContent = "Something went wrong: " + err.message + ". Please try again or contact us.";
+          msg.style.display = "block";
+          msg.style.color = "#a7382d";
+          btn.disabled = false;
+          btn.textContent = "Pay & Confirm";
+        }
+      }
+
+      function showSuccess() {
+        const saved = {
+          name: document.getElementById("f-name").value,
+          phone: document.getElementById("f-phone").value,
+          email: document.getElementById("f-email").value,
+          address: document.getElementById("f-address").value,
+          recipientName: document.getElementById("f-senior-name").value,
+          recipientPhone: document.getElementById("f-senior-phone").value,
+        };
+        localStorage.setItem("savedCustomerInfo", JSON.stringify(saved));
+
+        document.querySelectorAll(".step, .step-indicator, .nav-buttons").forEach(e => e.style.display = "none");
+        document.querySelector(".book-page").innerHTML = `
+          <div style="text-align:center;padding:60px 20px">
+            <span style="font-size:4rem">🌿</span>
+            <h1 style="margin:16px 0 8px">You're all set!</h1>
+            <p style="font-size:1.1rem;color:var(--muted);margin-bottom:24px">
+              Thank you for choosing popsyard.com. We'll send a confirmation with your visit details.
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+              <a href="index.html" class="primary-button" style="padding:12px 28px;display:inline-flex">Back to home</a>
+              <a href="book.html" class="secondary-button" style="padding:12px 28px;display:inline-flex">Book another</a>
+            </div>
+          </div>
+        `;
+        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 300);
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("success") === "1") { showSuccess(); }
+    </script>
+
+    <footer style="padding:20px clamp(18px,4vw,56px);background:var(--surface-soft);border-top:1px solid var(--line);font-size:0.75rem;color:var(--muted);line-height:1.6">
+      <p><strong>*Free clean offer:</strong> The first clean at any location is free as an added week at the beginning of your subscription. Limit one free clean per property, ever. Orders may be canceled at any time. This offer applies to new customers only and cannot be combined with other promotions.</p>
+    </footer>
+  </body>
+</html>

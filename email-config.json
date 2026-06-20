@@ -1,0 +1,10 @@
+{
+  "notifyEmail": "Zeph@survivormountain.com",
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": false,
+    "user": "YOUR_EMAIL@gmail.com",
+    "pass": "YOUR_APP_PASSWORD"
+  }
+}

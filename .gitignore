@@ -1,0 +1,10 @@
+node_modules/
+sent-photos/
+.env
+pre-launch-backup/
+backups/
+data/bookings.json
+data/waitlist.json
+data/appointments.json
+data/email-config.json
+google-key.json
