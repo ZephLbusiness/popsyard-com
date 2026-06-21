@@ -55,7 +55,7 @@ const concepts = {
         "Plant & garden watering",
         "Kennel cleaning & hose-down",
         "The first clean is always free (at any new location)*",
-      ]],
+      ], "$79.99"],
       ["Silver Membership", "$159.99/mo", "Four weekly visits. Poop, plants, kennels, photo updates, gate check. Limited to 15 senior yards.", [
         "4 weekly visits per month",
         "Poop scooping every single visit",
@@ -64,13 +64,13 @@ const concepts = {
         "Photo sent to your email after every visit",
         "Gate check & lock confirmation",
         "Pays for 3 weeks, gets 1 extra free",
-      ]],
+      ], "$179.99/mo"],
       ["Gold Membership", "$359.99/mo", "Everything in Silver + 2 times the visits, and a printed yard report each month.", [
         "Everything in Silver Membership",
         "Double the regular visits — 2 per week",
         "Printed monthly yard report",
         "First available appointment priority",
-      ]],
+      ], "$379.99/mo"],
     ],
     carouselLabel: "Local dogs on our cleanup route",
     dogCarousel: [
@@ -98,7 +98,7 @@ function cardHtml(items, type) {
           <h3 style="margin:0">${item[0]}</h3>
           ${details.length ? `<button class="pricing-toggle" onclick="togglePricingDetails(this)" style="background:none;border:1px solid var(--line);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.8rem;display:grid;place-items:center;flex-shrink:0;color:var(--muted)">\u25BC</button>` : ""}
         </div>
-        <strong>${item[1]}</strong>
+        ${item[4] ? `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:1rem;text-decoration:line-through;color:var(--muted)">${item[4]}</span><strong style="font-size:1.5rem">${item[1]}</strong></div>` : `<strong>${item[1]}</strong>`}
         <p>${item[2]}</p>
         ${detailsHtml}
       </article>`;
