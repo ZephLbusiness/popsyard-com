@@ -9,3 +9,4 @@ data/appointments.json
 data/email-config.json
 google-key.json
 data/google-service-account.json
+!data/.gitkeep
