@@ -78,8 +78,8 @@ const concepts = {
     carouselLabel: "Local dogs on our cleanup route",
     dogCarousel: [
       { name: "Meet Maple", note: "Tuesday route, backyard explorer.", image: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=1100&q=85", color: "#ffd166" },
-      { name: "Meet Biscuit", note: "Friday route, champion dig supervisor.", image: "https://images.unsplash.com/photo-1583511655826-05700442b31b?auto=format&fit=crop&w=1100&q=85", color: "#8fd87a" },
-      { name: "Meet Cooper", note: "Wednesday route, tail-wagging yard inspector.", image: "https://images.unsplash.com/photo-1553882809-a4f57e595701?auto=format&fit=crop&w=1100&q=85", color: "#c084fc" },
+      { name: "Meet Biscuit", note: "Friday route, champion dig supervisor.", image: "https://images.unsplash.com/photo-1544568100-847a948585b9?auto=format&fit=crop&w=1100&q=85", color: "#8fd87a" },
+      { name: "Meet Cooper", note: "Wednesday route, tail-wagging yard inspector.", image: "https://images.unsplash.com/photo-1568572933382-74d440642117?auto=format&fit=crop&w=1100&q=85", color: "#c084fc" },
       { name: "Meet Juniper", note: "Monday route, patio sunbeam regular.", image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1100&q=85", color: "#f4978e" },
       { name: "Meet Taco", note: "Thursday route, tiny yard boss.", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1100&q=85", color: "#9dffb0" },
     ],
@@ -129,6 +129,7 @@ function setConcept(key) {
   document.querySelectorAll("[data-copy]").forEach((node) => {
     const field = node.dataset.copy;
     if (field === "heroImage") { node.src = concept.heroImage; return; }
+    if (field === "brandMark") return;
     if (concept[field] !== undefined) node.textContent = concept[field];
   });
 
