@@ -1,2 +1,2 @@
-# Frontend calls Railway API directly — this is a fallback proxy
+# Frontend calls Railway API directly - this is a fallback proxy
 /api/* https://shimmering-inspiration-production-d0a3.up.railway.app/api/:splat 200
