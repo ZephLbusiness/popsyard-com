@@ -6,6 +6,7 @@
     <title>Book — popsyard.com</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
     <style>
       .book-page { max-width: 780px; margin: 0 auto; padding: 40px clamp(18px, 4vw, 56px); }
@@ -102,22 +103,22 @@
 
       <div id="step-1" class="step active">
         <h2>Choose your plan</h2>
-        <p>Select the plan that fits your needs. All plans include poop scooping, plant watering, and kennel cleaning.</p>
+        <p>Select the plan that fits your needs. All plans include lawn mowing, poop scooping, plant watering, and kennel cleaning.</p>
         <div class="plan-cards">
           <div class="plan-card" data-plan="one_time" onclick="selectPlan(this, 'one_time')">
             <h3>One-Time Clean</h3>
-            <div class="price"><span style="font-size:1rem;text-decoration:line-through;color:var(--muted);font-weight:400">$79.99</span> $59.99</div>
-            <p>Single deep clean. The first clean is always free (at any new location)*.</p>
+            <div class="price">$59.99</div>
+            <p>Full yard service including lawn mowing, poop scoop, plants, and kennels. The first clean is always free (at any new location)*.</p>
           </div>
           <div class="plan-card featured" data-plan="silver" onclick="selectPlan(this, 'silver')">
             <h3>Silver Membership</h3>
-            <div class="price"><span style="font-size:1rem;text-decoration:line-through;color:var(--muted);font-weight:400">$179.99</span> $159.99</div>
-            <p>4 weekly visits. Photo updates, gate check, same crew.</p>
+            <div class="price">$159.99</div>
+            <p>4 weekly visits including lawn mowing, poop, plants, kennels, photo updates, gate check.</p>
           </div>
           <div class="plan-card" data-plan="gold" onclick="selectPlan(this, 'gold')">
             <h3>Gold Membership</h3>
-            <div class="price"><span style="font-size:1rem;text-decoration:line-through;color:var(--muted);font-weight:400">$379.99</span> $359.99</div>
-            <p>Everything in Silver + 2 times the visits, printed report.</p>
+            <div class="price">$359.99</div>
+            <p>Everything in Silver + 2 times the visits, lawn mowing included, plus a printed report.</p>
           </div>
         </div>
         <div class="nav-buttons">
@@ -302,7 +303,7 @@
       }
 
       function populateReview() {
-        const plans = { silver: ["Silver Membership", "<span style=\"text-decoration:line-through;color:var(--muted)\">$179.99</span> $159.99 / 4 weeks"], gold: ["Gold Membership", "<span style=\"text-decoration:line-through;color:var(--muted)\">$379.99</span> $359.99 / 4 weeks"], one_time: ["One-Time Clean", "<span style=\"text-decoration:line-through;color:var(--muted)\">$79.99</span> $59.99"] };
+        const plans = { silver: ["Silver Membership", "$159.99 / 4 weeks"], gold: ["Gold Membership", "$359.99 / 4 weeks"], one_time: ["One-Time Clean", "$59.99"] };
         const p = plans[booking.plan] || ["", ""];
         document.getElementById("rv-plan-name").textContent = p[0];
         document.getElementById("rv-plan-price").innerHTML = p[1];

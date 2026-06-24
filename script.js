@@ -50,13 +50,15 @@ const concepts = {
       ["We send photo updates", "A photo after every visit sent directly to the adult child\u2019s email."],
     ],
     pricing: [
-      ["One-Time Clean", "$59.99", "First big poop clean, plants, and kennels. The first clean is always free (at any new location)*.", [
-        "First big poop scoop & haul",
+      ["One-Time Clean", "$59.99", "Full yard service including lawn mowing, poop scoop, plants, and kennels. The first clean is always free (at any new location)*.", [
+        "Lawn mowing & trimming",
+        "Poop scoop & haul",
         "Plant & garden watering",
         "Kennel cleaning & hose-down",
         "The first clean is always free (at any new location)*",
-      ], "$79.99"],
-      ["Silver Membership", "$159.99/mo", "Four weekly visits. Poop, plants, kennels, photo updates, gate check. Limited to 15 senior yards.", [
+      ]],
+      ["Silver Membership", "$159.99/mo", "Four weekly visits including lawn mowing, poop, plants, kennels, photo updates, gate check. Limited to 15 senior yards.", [
+        "Lawn mowing every visit",
         "4 weekly visits per month",
         "Poop scooping every single visit",
         "Plant & garden watering",
@@ -64,18 +66,20 @@ const concepts = {
         "Photo sent to your email after every visit",
         "Gate check & lock confirmation",
         "Pays for 3 weeks, gets 1 extra free",
-      ], "$179.99/mo"],
-      ["Gold Membership", "$359.99/mo", "Everything in Silver + 2 times the visits, and a printed yard report each month.", [
+      ]],
+      ["Gold Membership", "$359.99/mo", "Everything in Silver + 2 times the visits, lawn mowing included, plus a printed yard report each month.", [
         "Everything in Silver Membership",
+        "Lawn mowing twice per week",
         "Double the regular visits — 2 per week",
         "Printed monthly yard report",
         "First available appointment priority",
-      ], "$379.99/mo"],
+      ]],
     ],
     carouselLabel: "Local dogs on our cleanup route",
     dogCarousel: [
       { name: "Meet Maple", note: "Tuesday route, backyard explorer.", image: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=1100&q=85", color: "#ffd166" },
       { name: "Meet Biscuit", note: "Friday route, champion dig supervisor.", image: "https://images.unsplash.com/photo-1583511655826-05700442b31b?auto=format&fit=crop&w=1100&q=85", color: "#8fd87a" },
+      { name: "Meet Cooper", note: "Wednesday route, tail-wagging yard inspector.", image: "https://images.unsplash.com/photo-1553882809-a4f57e595701?auto=format&fit=crop&w=1100&q=85", color: "#c084fc" },
       { name: "Meet Juniper", note: "Monday route, patio sunbeam regular.", image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1100&q=85", color: "#f4978e" },
       { name: "Meet Taco", note: "Thursday route, tiny yard boss.", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1100&q=85", color: "#9dffb0" },
     ],
@@ -98,7 +102,7 @@ function cardHtml(items, type) {
           <h3 style="margin:0">${item[0]}</h3>
           ${details.length ? `<button class="pricing-toggle" onclick="togglePricingDetails(this)" style="background:none;border:1px solid var(--line);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.8rem;display:grid;place-items:center;flex-shrink:0;color:var(--muted)">\u25BC</button>` : ""}
         </div>
-        ${item[4] ? `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:1rem;text-decoration:line-through;color:var(--muted)">${item[4]}</span><strong style="font-size:1.5rem">${item[1]}</strong></div>` : `<strong>${item[1]}</strong>`}
+        <strong>${item[1]}</strong>
         <p>${item[2]}</p>
         ${detailsHtml}
       </article>`;
