@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claim Your Spot — popsyard.com</title>
+    <link rel="icon" href="favicon.jpg" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .claim-page { max-width: 600px; margin: 0 auto; padding: 40px clamp(18px, 4vw, 56px); }
+      .claim-page h1 { font-size: 1.8rem; margin-bottom: 4px; }
+      .claim-page .sub { color: var(--muted); margin-bottom: 32px; }
+      .detail-box { background: var(--surface-soft); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+      .detail-box h3 { margin-bottom: 4px; font-size: 1rem; }
+      .detail-box p { margin: 3px 0; font-size: 0.92rem; }
+      .detail-box .label { color: var(--muted); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
+      .claim-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+      .claim-yes { padding: 14px 36px; border-radius: 8px; background: var(--green-dark); color: #fff; font-weight: 800; font-size: 1.1rem; border: 0; cursor: pointer; }
+      .claim-yes:hover { opacity: 0.9; }
+      .claim-no { padding: 14px 36px; border-radius: 8px; background: var(--surface); color: var(--ink); font-weight: 800; font-size: 1.1rem; border: 1px solid var(--line); cursor: pointer; }
+      .claim-no:hover { background: var(--surface-soft); }
+      .error-box { background: #fff3cd; color: #856404; padding: 16px; border-radius: 8px; margin-bottom: 16px; font-weight: 700; }
+      .success-box { background: #d4edda; color: #155724; padding: 16px; border-radius: 8px; margin-bottom: 16px; font-weight: 700; }
+      .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
+      .status-waiting { background: #fff3cd; color: #856404; }
+      .status-notified { background: #cce5ff; color: #004085; }
+      .status-claimed { background: #d4edda; color: #155724; }
+      .status-skipped, .status-expired { background: #f8d7da; color: #721c24; }
+      #loading-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(255,255,255,0.85); display: none; place-items: center; }
+      #loading-overlay.show { display: grid; }
+      .spinner { width: 40px; height: 40px; border: 4px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body style="background:var(--bg)">
+    <header class="topbar" style="position:static">
+      <a class="brand" href="index.html">
+        <span class="brand-mark"><img src="favicon.jpg" alt="" width="24" height="24" /></span>
+        <span>popsyard.com</span>
+      </a>
+      <p class="single-concept">Claim Your Spot</p>
+    </header>
+
+    <div class="claim-page" id="claim-root">
+      <div id="loading-overlay"><div class="spinner"></div></div>
+      <div id="claim-content"></div>
+    </div>
+
+    <script>
+      const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
+
+      async function init() {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+        const content = document.getElementById("claim-content");
+
+        if (!token) {
+          content.innerHTML = '<div class="error-box">No claim link found. Check your email for the full link.</div>';
+          return;
+        }
+
+        try {
+          // First claim the spot to verify the token is valid
+          const claimRes = await fetch(BACKEND_URL + "/api/waiting-list/claim", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token })
+          });
+          const claimData = await claimRes.json();
+
+          if (!claimData.success) {
+            content.innerHTML = '<div class="error-box">' + esc(claimData.error || "This claim link is invalid or expired. The spot may have been claimed by someone else.") + '</div><p style="color:var(--muted);text-align:center">If you believe this is an error, please contact us.</p>';
+            return;
+          }
+
+          renderClaim(claimData.entry);
+        } catch {
+          content.innerHTML = '<div class="error-box">Could not connect to the server. Please try again later.</div>';
+        }
+      }
+
+      function renderClaim(entry) {
+        const content = document.getElementById("claim-content");
+        const statusLabels = { waiting: "Waiting", notified: "Offer Sent", claimed: "Claimed", skipped: "Skipped", expired: "Expired" };
+        const statusClass = "status-" + entry.status;
+
+        content.innerHTML = `
+          <h1>A spot has opened up!</h1>
+          <p class="sub">This spot was reserved for you. Review your application below.</p>
+
+          <div style="margin-bottom:16px">
+            <span class="status-badge ${statusClass}">${statusLabels[entry.status] || entry.status}</span>
+          </div>
+
+          <div class="detail-box">
+            <h3>Your Application Details</h3>
+            <p><span class="label">Plan</span><br>${esc(entry.plan || "\u2014")}</p>
+            <p><span class="label">Service address</span><br>${esc(entry.address)}</p>
+            <p><span class="label">Your name</span><br>${esc(entry.name)}</p>
+            <p><span class="label">Phone</span><br>${esc(entry.phone || "\u2014")}</p>
+            <p><span class="label">Email</span><br>${esc(entry.email || "\u2014")}</p>
+            ${entry.senior_name ? `<p><span class="label">Senior</span><br>${esc(entry.senior_name)}</p>` : ""}
+            ${entry.senior_phone ? `<p><span class="label">Senior phone</span><br>${esc(entry.senior_phone)}</p>` : ""}
+            ${entry.dogs ? `<p><span class="label">Dogs</span><br>${esc(entry.dogs)}</p>` : ""}
+            ${entry.day_of_week ? `<p><span class="label">Preferred day</span><br>${esc(entry.day_of_week)}</p>` : ""}
+            ${entry.time_slot ? `<p><span class="label">Preferred time</span><br>${esc(entry.time_slot)}</p>` : ""}
+            ${entry.notes ? `<p><span class="label">Notes</span><br>${esc(entry.notes)}</p>` : ""}
+          </div>
+
+          <div id="claim-actions">
+            <p style="font-size:1.05rem;line-height:1.5">
+              Your spot is reserved! Click below to continue to purchase.
+              If not, your position will be handed to the next person in line.
+            </p>
+            <div class="claim-actions">
+              <button class="claim-yes" onclick="goToPurchase('${encodeURIComponent(entry.name)}', '${encodeURIComponent(entry.address)}', '${encodeURIComponent(entry.plan || "")}')">YES and PURCHASE</button>
+              <button class="claim-no" onclick="skipSpot('${entry.id}')">No, pass it on</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function goToPurchase(name, address, plan) {
+        try {
+          localStorage.setItem("savedCustomerInfo", JSON.stringify({
+            name: decodeURIComponent(name),
+            phone: "",
+            email: "",
+            address: decodeURIComponent(address),
+            recipientName: "",
+            recipientPhone: "",
+          }));
+        } catch {}
+        window.location.href = "book.html?claimed=1&name=" + name + "&address=" + address + "&plan=" + plan;
+      }
+
+      async function skipSpot(id) {
+        if (!confirm("Pass this spot to the next person in line? You'll be removed from the waiting list.")) return;
+        try {
+          const res = await fetch(BACKEND_URL + "/api/waiting-list/skip", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById("claim-content").innerHTML = `
+              <div style="text-align:center;padding:40px 20px">
+                <h2>You've passed on this spot</h2>
+                <p style="color:var(--muted);margin-bottom:24px">The next person in line will be notified. Thank you for your interest!</p>
+                <a href="index.html" class="primary-button" style="display:inline-flex;padding:0 28px;min-height:44px">Back to popsyard.com</a>
+              </div>
+            `;
+          }
+        } catch {
+          document.getElementById("claim-content").innerHTML = '<div class="error-box">Server error. Please try again.</div>';
+        }
+      }
+
+      function esc(str) { if (!str) return ""; const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+      init();
+    </script>
+  </body>
+</html>

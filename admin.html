@@ -76,6 +76,11 @@
       .server-banner { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.85rem; font-weight: 700; }
       .server-online { background: #d4edda; color: #155724; }
       .server-offline { background: #fff3cd; color: #856404; }
+      .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+      .status-waiting { background: #fff3cd; color: #856404; }
+      .status-notified { background: #cce5ff; color: #004085; }
+      .status-claimed { background: #d4edda; color: #155724; }
+      .status-skipped, .status-expired { background: #f8d7da; color: #721c24; }
     </style>
   </head>
   <body>
@@ -117,10 +122,13 @@
       </div>
 
       <div id="tab-waitlist" class="tab-content">
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
           <button onclick="renderWaitlist()">&#x21bb; Refresh</button>
+          <button onclick="notifyNextInLine()" id="notify-next-btn">&#x1F514; Notify next in line</button>
           <span style="color:var(--muted);font-size:0.88rem" id="waitlist-count"></span>
+          <span style="color:var(--muted);font-size:0.88rem" id="waitlist-capacity"></span>
         </div>
+        <div id="waitlist-status"></div>
         <div id="waitlist-wrap"></div>
       </div>
 
@@ -368,31 +376,118 @@
 
       function getWaitlist() { try { return JSON.parse(localStorage.getItem("waitlist")) || []; } catch { return []; } }
 
-      function renderWaitlist() {
-        const list = getWaitlist();
+      async function renderWaitlist() {
         const wrap = document.getElementById("waitlist-wrap");
-        document.getElementById("waitlist-count").textContent = list.length + " waitlisted";
-        if (list.length === 0) {
-          wrap.innerHTML = '<div class="empty"><h2>No waitlist entries</h2><p>People join the waitlist when all 15 senior yard slots are filled.</p></div>';
-          return;
+        const statusDiv = document.getElementById("waitlist-status");
+        statusDiv.innerHTML = "";
+
+        try {
+          const [listRes, capacityRes] = await Promise.all([
+            fetch(BACKEND_URL + "/api/waiting-list", { signal: AbortSignal.timeout(5000) }).catch(() => null),
+            fetch(BACKEND_URL + "/api/waiting-list/capacity", { signal: AbortSignal.timeout(5000) }).catch(() => null),
+          ]);
+
+          if (!listRes || !capacityRes) {
+            wrap.innerHTML = '<div class="empty"><h2>Server offline</h2><p>Start the backend to manage the waiting list.</p></div>';
+            document.getElementById("waitlist-count").textContent = "";
+            document.getElementById("waitlist-capacity").textContent = "";
+            document.getElementById("notify-next-btn").disabled = true;
+            return;
+          }
+
+          const list = await listRes.json();
+          const capacity = await capacityRes.json();
+
+          document.getElementById("waitlist-count").textContent = list.length + " on waiting list";
+          document.getElementById("waitlist-capacity").textContent = "(" + capacity.activeClients + " active / " + capacity.maxClients + " max, " + capacity.spotsLeft + " spots left)";
+          document.getElementById("notify-next-btn").disabled = false;
+
+          if (list.length === 0) {
+            wrap.innerHTML = '<div class="empty"><h2>No one on the waiting list</h2><p>People are added here when all ' + capacity.maxClients + ' client slots are full.</p></div>';
+            return;
+          }
+
+          const statusLabels = { waiting: "Waiting", notified: "Offered", claimed: "Claimed", skipped: "Skipped", expired: "Expired" };
+
+          let html = `<table><thead><tr><th>#</th><th>Date</th><th>Status</th><th>Buyer</th><th>Senior</th><th>Phone</th><th>Email</th><th>Address</th><th>Plan</th><th>Day/Time</th><th>Dogs</th><th>Notes</th><th>Actions</th></tr></thead><tbody>`;
+          list.forEach((entry, i) => {
+            const date = entry.created_at ? new Date(entry.created_at).toLocaleDateString() : "\u2014";
+            const statusClass = "status-badge status-" + entry.status;
+            html += `<tr style="${entry.status === 'waiting' ? 'background:#f0fdf4' : ''}">
+              <td>${i + 1}</td>
+              <td>${date}</td>
+              <td><span class="${statusClass}">${statusLabels[entry.status] || entry.status}</span></td>
+              <td><strong>${esc(entry.name)}</strong></td>
+              <td>${entry.senior_name ? esc(entry.senior_name) : "\u2014"}</td>
+              <td>${entry.phone ? esc(entry.phone) : "\u2014"}</td>
+              <td>${entry.email ? esc(entry.email) : "\u2014"}</td>
+              <td>${esc(entry.address)}</td>
+              <td>${esc(entry.plan)}</td>
+              <td>${entry.day_of_week || ""}${entry.time_slot ? " " + entry.time_slot : ""}</td>
+              <td>${entry.dogs || "\u2014"}</td>
+              <td>${esc(entry.notes || "")}</td>
+              <td class="actions">
+                ${entry.status === 'waiting' ? `<button onclick="skipEntry('${entry.id}')" style="color:#856404;border-color:#856404">Skip</button>` : ""}
+                <button onclick="removeEntry('${entry.id}')" style="color:#a7382d;border-color:#a7382d">Remove</button>
+              </td>
+            </tr>`;
+          });
+          html += "</tbody></table>";
+          wrap.innerHTML = html;
+        } catch {
+          wrap.innerHTML = '<div class="empty"><h2>Error loading waitlist</h2><p>Check server connection.</p></div>';
         }
-        let html = `<table><thead><tr><th>Date</th><th>Buyer</th><th>Senior</th><th>Phone</th><th>Senior Phone</th><th>Email</th><th>Address</th><th>Plan</th><th>Notes</th></tr></thead><tbody>`;
-        list.forEach((entry, i) => {
-          const date = entry.joinedAt ? new Date(entry.joinedAt).toLocaleDateString() : "\u2014";
-          html += `<tr>
-            <td>${date}</td>
-            <td><strong>${esc(entry.name)}</strong></td>
-            <td>${entry.recipientName ? esc(entry.recipientName) : "\u2014"}</td>
-            <td>${entry.phone ? esc(entry.phone) : "\u2014"}</td>
-            <td>${entry.recipientPhone ? esc(entry.recipientPhone) : "\u2014"}</td>
-            <td>${entry.email ? esc(entry.email) : "\u2014"}</td>
-            <td>${esc(entry.address)}</td>
-            <td>${esc(entry.plan)}</td>
-            <td>${esc(entry.notes)}</td>
-          </tr>`;
-        });
-        html += "</tbody></table>";
-        wrap.innerHTML = html;
+      }
+
+      async function notifyNextInLine() {
+        const btn = document.getElementById("notify-next-btn");
+        const statusDiv = document.getElementById("waitlist-status");
+        btn.disabled = true;
+        btn.textContent = "Notifying...";
+        statusDiv.innerHTML = "";
+
+        try {
+          const res = await fetch(BACKEND_URL + "/api/waiting-list/notify-next", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(10000)
+          });
+          const data = await res.json();
+          if (data.success && data.entry) {
+            statusDiv.innerHTML = '<div style="padding:12px 16px;border-radius:8px;background:#d4edda;color:#155724;font-weight:700;margin-bottom:12px">' +
+              '&#x2705; Notified ' + esc(data.entry.name) + ' at ' + esc(data.entry.email || "(no email)") +
+              (data.emailSent ? ' &#x1F4E8; Email sent!' : ' &#x26A0; Email not sent (check SMTP config)') +
+              '. <a href="' + data.claimUrl + '" target="_blank" style="color:#155724">Claim link</a></div>';
+          } else if (data.success === false) {
+            statusDiv.innerHTML = '<div style="padding:12px 16px;border-radius:8px;background:#fff3cd;color:#856404;font-weight:700;margin-bottom:12px">' + esc(data.message || "No one on the waiting list.") + '</div>';
+          }
+        } catch {
+          statusDiv.innerHTML = '<div style="padding:12px 16px;border-radius:8px;background:#f8d7da;color:#721c24;font-weight:700;margin-bottom:12px">Server error. Is the backend running?</div>';
+        }
+        btn.disabled = false;
+        btn.textContent = "\u{1F514} Notify next in line";
+        renderWaitlist();
+      }
+
+      async function skipEntry(id) {
+        if (!confirm("Skip this person? They'll be moved to skipped and the next person becomes first in line.")) return;
+        try {
+          await fetch(BACKEND_URL + "/api/waiting-list/skip", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
+            signal: AbortSignal.timeout(5000)
+          });
+          renderWaitlist();
+        } catch { alert("Server error"); }
+      }
+
+      async function removeEntry(id) {
+        if (!confirm("Remove this entry from the waiting list?")) return;
+        try {
+          await fetch(BACKEND_URL + "/api/waiting-list/remove", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
+            signal: AbortSignal.timeout(5000)
+          });
+          renderWaitlist();
+        } catch { alert("Server error"); }
       }
 
       async function deleteBooking(key) {

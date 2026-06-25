@@ -1,5 +1,5 @@
 const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
-const SPOTS_TOTAL = 15;
+const SPOTS_TOTAL = 5;
 let spotsRemaining = SPOTS_TOTAL;
 
 const concepts = {
@@ -27,14 +27,14 @@ const concepts = {
     promiseTitle: "Everything included. Nothing for them to do.",
     promiseText: "Poop pickup, flower and garden watering, and dog kennel cleaning \u2014 all in one weekly visit. We send a photo after every visit so you know it\u2019s done. No bending, no lifting, no worrying.",
     processTitle: "Apply once. We handle the rest.",
-    pricingTitle: "Senior Yard Care \u2014 limited to 15 yards",
-    pricingText: "Founding member pricing available for the first 10 members. Rates increase when we reach capacity.",
+    pricingTitle: "Senior Yard Care \u2014 limited to 5 clients per week",
+    pricingText: "Limited to 5 clients per week. Founding member pricing available for the first 10 members.",
     ctaTitle: "Apply for senior yard membership",
     formButton: "Submit application",
     heroImage: "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=1100&q=85",
-    trust: ["Only 15 senior yards accepted", "Photo sent to family", "No bending, no lifting"],
+    trust: ["Limited to 5 clients per week", "Photo sent to family", "No bending, no lifting"],
     proof: [
-      ["Limited", "to 15 senior yards"],
+      ["Limited", "to 5 clients per week"],
       ["Photo proof", "sent to your family"],
       ["Same crew", "every single visit"],
       ["Risk-free", "first visit on us"],
@@ -46,7 +46,7 @@ const concepts = {
     ],
     steps: [
       ["Apply for membership", "Tell us about your parents\u2019 yard and what they need. We\u2019ll check availability."],
-      ["We confirm your spot", "One of our 15 senior yard slots. Founding member pricing if you\u2019re in the first 10."],
+      ["We confirm your spot", "One of our 5 weekly client spots. Founding member pricing if you\u2019re in the first 10."],
       ["We send photo updates", "A photo after every visit sent directly to the adult child\u2019s email."],
     ],
     pricing: [
@@ -57,7 +57,7 @@ const concepts = {
         "Kennel cleaning & hose-down",
         "The first clean is always free (at any new location)*",
       ]],
-      ["Silver Membership", "$159.99/mo", "Four weekly visits including lawn mowing, poop, plants, kennels, photo updates, gate check. Limited to 15 senior yards.", [
+      ["Silver Membership", "$159.99/mo", "Four weekly visits including lawn mowing, poop, plants, kennels, photo updates, gate check. Limited to 5 clients per week.", [
         "Lawn mowing every visit",
         "4 weekly visits per month",
         "Poop scooping every single visit",
@@ -246,14 +246,6 @@ async function syncBookingToBackend(key, booking) {
   } catch {}
 }
 
-async function syncWaitlistToBackend(entry) {
-  try {
-    await fetch(BACKEND_URL + "/api/waitlist", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry)
-    });
-  } catch {}
-}
-
 const DALLAS_OR = { lat: 44.9193, lon: -123.3170 };
 const MAX_MILES = 11;
 let addressValid = false;
@@ -342,17 +334,22 @@ function setupOrderForm() {
   const spotEl = document.getElementById("spots-remaining");
   updateSpotsDisplay();
 
-  function updateSpotsDisplay() {
-    const count = Object.keys(getBookedSlots()).length;
-    spotsRemaining = SPOTS_TOTAL - count;
-    if (spotEl) spotEl.textContent = Math.max(0, spotsRemaining);
+  async function updateSpotsDisplay() {
+    const capacityRes = await fetch(BACKEND_URL + "/api/waiting-list/capacity", { signal: AbortSignal.timeout(5000) }).catch(() => null);
+    let spotsLeft = 5;
+    if (capacityRes) {
+      const data = await capacityRes.json();
+      spotsLeft = data.spotsLeft;
+    }
+    if (spotEl) spotEl.textContent = Math.max(0, spotsLeft);
 
     const bannerText = document.getElementById("spots-banner-text");
     if (bannerText) {
-      if (spotsRemaining <= 0) {
-        bannerText.innerHTML = '&#x26A0; All 15 senior yard slots are filled. <a href="#quote" style="color:var(--accent)">Join the waitlist</a> for the next opening.';
+      if (spotsLeft <= 0) {
+        bannerText.innerHTML = '&#x26A0; All client spots are filled. <a href="#quote" style="color:var(--accent)">Join the waiting list</a> for the next opening.';
       } else {
-        bannerText.innerHTML = `&#x26A0; Now accepting senior yard membership applications &mdash; limited to <strong>15 yards</strong>. <strong>${spotsRemaining}</strong> spot${spotsRemaining > 1 ? "s" : ""} left.`;
+        bannerText.innerHTML = `&#x26A0; now accepting clients &mdash; limited to <strong>5 clients per week</strong>.
+      <span id="spots-remaining" style="color:var(--accent)">${spotsLeft}</span> spot${spotsLeft > 1 ? "s" : ""} left.`;
       }
     }
   }
@@ -363,24 +360,34 @@ function setupOrderForm() {
     const formData = new FormData(form);
     const bookedSlots = getBookedSlots();
 
-    if (spotsRemaining <= 0) {
-      const waitlist = JSON.parse(localStorage.getItem("waitlist") || "[]");
-      waitlist.push({
+    const capacityRes = await fetch(BACKEND_URL + "/api/waiting-list/capacity", { signal: AbortSignal.timeout(5000) }).catch(() => null);
+    let spotsLeft = 5;
+    if (capacityRes) {
+      const capacityData = await capacityRes.json();
+      spotsLeft = capacityData.spotsLeft;
+    }
+
+    if (spotsLeft <= 0) {
+      const body = {
         name: formData.get("name"),
         phone: formData.get("phone"),
         email: formData.get("email"),
-        recipientName: formData.get("recipientName") || "",
-        recipientPhone: formData.get("recipientPhone") || "",
+        seniorName: formData.get("recipientName") || "",
+        seniorPhone: formData.get("recipientPhone") || "",
         address: formData.get("address"),
         dogs: formData.get("dogs"),
         plan: formData.get("plan"),
         notes: formData.get("notes"),
-        joinedAt: new Date().toISOString(),
-      });
-      localStorage.setItem("waitlist", JSON.stringify(waitlist));
-      syncWaitlistToBackend(waitlist[waitlist.length - 1]);
+      };
+      const joinRes = await fetch(BACKEND_URL + "/api/waiting-list/join", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+      }).catch(() => null);
       message.className = "booking-message field-wide is-success";
-      message.textContent = "You've been added to the waitlist. We'll contact you when a senior yard spot opens up.";
+      if (joinRes) {
+        message.textContent = "All client spots are currently filled. You've been added to the waiting list! We'll email you as soon as a spot opens up.";
+      } else {
+        message.textContent = "You've been added to the waiting list. We'll contact you when a spot opens up.";
+      }
       form.reset();
       clearAddressError();
       return;

@@ -209,6 +209,127 @@ app.post("/api/waitlist", (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Waiting List (SQLite-backed) ---
+const MAX_CLIENTS = 5;
+
+async function notifyNextIfSpotAvailable() {
+  const active = db.activeClientCount();
+  if (active >= MAX_CLIENTS) return { notified: false, reason: "No spot available" };
+  const entry = db.waitingFirst.get();
+  if (!entry) return { notified: false, reason: "No one waiting" };
+  db.updateWaitingStatus.run('notified', 'notified', null, entry.id);
+  const claimUrl = `https://popsyard.pages.dev/claim.html?token=${entry.claim_token}`;
+  const html = buildSpotNotificationHtml(entry, claimUrl);
+  let emailSent = false;
+  if (entry.email) {
+    emailSent = await sendEmail(entry.email, "Spot Opened — popsyard.com", html);
+  }
+  return { notified: true, entry, emailSent, claimUrl };
+}
+
+function buildSpotNotificationHtml(entry, claimUrl) {
+  return `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+      <h2 style="color:#2d6a4f">A spot has opened up!</h2>
+      <p>Hi <strong>${entry.name}</strong>,</p>
+      <p>A new spot has opened up in our client base. Here's what you applied for:</p>
+      <table style="border-collapse:collapse;width:100%;margin:16px 0">
+        <tr><td style="padding:8px;border:1px solid #ccc;font-weight:700;width:120px">Plan</td><td style="padding:8px;border:1px solid #ccc">${entry.plan || "—"}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Service address</td><td style="padding:8px;border:1px solid #ccc">${entry.address}</td></tr>
+        ${entry.senior_name ? `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Senior</td><td style="padding:8px;border:1px solid #ccc">${entry.senior_name}</td></tr>` : ""}
+        ${entry.dogs ? `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Dogs</td><td style="padding:8px;border:1px solid #ccc">${entry.dogs}</td></tr>` : ""}
+        ${entry.notes ? `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Notes</td><td style="padding:8px;border:1px solid #ccc">${entry.notes}</td></tr>` : ""}
+        ${entry.day_of_week ? `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Preferred day</td><td style="padding:8px;border:1px solid #ccc">${entry.day_of_week}</td></tr>` : ""}
+        ${entry.time_slot ? `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:700">Preferred time</td><td style="padding:8px;border:1px solid #ccc">${entry.time_slot}</td></tr>` : ""}
+      </table>
+      <p style="font-size:1.05rem;line-height:1.5">
+        If you would like to purchase now, click <strong>YES and PURCHASE</strong> below.
+        If not, your position will be handed to the next person in line.
+      </p>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${claimUrl}" style="display:inline-block;padding:14px 36px;border-radius:8px;background:#2d6a4f;color:#fff;font-weight:800;font-size:1.1rem;text-decoration:none">YES and PURCHASE</a>
+      </div>
+      <p style="color:#888;font-size:0.85rem">Link expires in 48 hours or when the spot is claimed.</p>
+      <p style="color:#888">— Zeph, popsyard.com</p>
+    </div>`;
+}
+
+app.get("/api/waiting-list", (req, res) => {
+  try {
+    const list = db.waitingListAll.all();
+    res.json(list);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/waiting-list/join", (req, res) => {
+  try {
+    const { name, phone, email, seniorName, seniorPhone, address, dogs, plan, notes, dayOfWeek, timeSlot } = req.body;
+    if (!name || !address) return res.status(400).json({ error: "Name and address required" });
+    const existing = db.activeClientCount();
+    const spotsLeft = Math.max(0, MAX_CLIENTS - existing);
+    const id = db.uid();
+    const token = db.uid() + Math.random().toString(36).slice(2, 10);
+    db.createWaitingEntry.run(id, name, phone || null, email || null, seniorName || null, seniorPhone || null, address, dogs || null, plan || null, notes || null, dayOfWeek || null, timeSlot || null, token);
+    res.json({ success: true, waitingId: id, claimToken: token, position: db.waitingListWaiting.all().length, spotsLeft });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/waiting-list/next", (req, res) => {
+  try {
+    const entry = db.waitingFirst.get();
+    res.json(entry || null);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/waiting-list/notify-next", async (req, res) => {
+  try {
+    const result = await notifyNextIfSpotAvailable();
+    if (!result.notified) return res.json({ success: false, message: result.reason || "No one on the waiting list." });
+    res.json({ success: true, entry: result.entry, emailSent: result.emailSent, claimUrl: result.claimUrl, message: result.entry.email ? `Notification sent to ${result.entry.email}` : "No email on file; claim link available." });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/waiting-list/claim", (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: "Claim token required" });
+    const entry = db.waitingByToken.get(token);
+    if (!entry) return res.status(404).json({ error: "Invalid or expired claim link." });
+    if (entry.status === 'claimed') return res.status(400).json({ error: "This spot has already been claimed." });
+    if (entry.status === 'skipped' || entry.status === 'expired') return res.status(400).json({ error: "This offer has expired." });
+    db.updateWaitingStatus.run('claimed', null, 'claimed', entry.id);
+    res.json({ success: true, entry });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/waiting-list/skip", (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "id required" });
+    const entry = db.waitingById.get(id);
+    if (!entry) return res.status(404).json({ error: "Entry not found" });
+    db.updateWaitingStatus.run('skipped', null, null, id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/waiting-list/remove", (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: "id required" });
+    db.deleteWaitingEntry.run(id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/waiting-list/capacity", (req, res) => {
+  try {
+    const active = db.activeClientCount();
+    res.json({ activeClients: active, maxClients: MAX_CLIENTS, spotsLeft: Math.max(0, MAX_CLIENTS - active) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Existing stripe config and other endpoints follow ---
 app.get("/api/stripe/config", (req, res) => {
   res.json({ configured: stripe.isConfigured(), publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "" });
 });
@@ -244,6 +365,8 @@ app.post("/api/stripe/webhook", async (req, res) => {
     }
     if (event.type === "customer.subscription.deleted") {
       db.db.prepare("UPDATE subscriptions SET status = 'canceled', end_date = ? WHERE stripe_subscription_id = ?").run(new Date().toISOString().slice(0, 10), event.subscriptionId);
+      // Auto-notify next in waiting list
+      notifyNextIfSpotAvailable().catch(() => {});
     }
     res.json({ received: true });
   } catch (err) {
@@ -414,6 +537,8 @@ app.post("/api/renewals/respond", async (req, res) => {
       res.json({ success: true, renewed: true, appointments: dates.length });
     } else {
       db.cancelSubscription.run(db.today(), subscriptionId);
+      // Auto-notify next in waiting list
+      notifyNextIfSpotAvailable().catch(() => {});
       res.json({ success: true, renewed: false, canceled: true });
     }
   } catch (err) { res.status(500).json({ error: err.message }); }

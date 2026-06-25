@@ -326,6 +326,46 @@
         msg.style.display = "none";
 
         try {
+          // Check capacity first
+          const capRes = await fetch(BACKEND_URL + "/api/waiting-list/capacity", { signal: AbortSignal.timeout(5000) }).catch(() => null);
+          let spotsLeft = 5;
+          if (capRes) {
+            const capData = await capRes.json();
+            spotsLeft = capData.spotsLeft;
+          }
+          if (spotsLeft <= 0) {
+            const body = {
+              name: document.getElementById("f-name").value,
+              phone: document.getElementById("f-phone").value,
+              email: document.getElementById("f-email").value || null,
+              seniorName: document.getElementById("f-senior-name").value || null,
+              seniorPhone: document.getElementById("f-senior-phone").value || null,
+              address: document.getElementById("f-address").value,
+              dogs: document.getElementById("f-dogs").value,
+              notes: document.getElementById("f-notes").value || null,
+              plan: booking.plan,
+              dayOfWeek: booking.dayOfWeek,
+              timeSlot: booking.timeSlot,
+            };
+            const joinRes = await fetch(BACKEND_URL + "/api/waiting-list/join", {
+              method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+            }).catch(() => null);
+            document.querySelectorAll(".step, .step-indicator, .nav-buttons").forEach(e => e.style.display = "none");
+            document.querySelector(".book-page").innerHTML = `
+              <div style="text-align:center;padding:60px 20px">
+                <span style="font-size:4rem">&#x1F4CB;</span>
+                <h1 style="margin:16px 0 8px">You're on the waiting list!</h1>
+                <p style="font-size:1.1rem;color:var(--muted);margin-bottom:24px">
+                  All client spots are currently filled. We've added you to the waiting list with your application details. We'll email you as soon as a spot opens up!
+                </p>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+                  <a href="index.html" class="primary-button" style="padding:12px 28px;display:inline-flex">Back to home</a>
+                </div>
+              </div>
+            `;
+            return;
+          }
+
           const body = {
             name: document.getElementById("f-name").value,
             phone: document.getElementById("f-phone").value,
@@ -428,6 +468,23 @@
 
       const params = new URLSearchParams(window.location.search);
       if (params.get("success") === "1") { showSuccess(); }
+      if (params.get("claimed") === "1") {
+        const name = params.get("name");
+        const address = params.get("address");
+        const plan = params.get("plan");
+        if (name) document.getElementById("f-name").value = name;
+        if (address) document.getElementById("f-address").value = address;
+        if (plan) {
+          const planMap = { "Silver Membership": "silver", "Gold Membership": "gold", "One-Time Clean": "one_time" };
+          const p = planMap[plan] || plan;
+          document.querySelectorAll(".plan-card").forEach(c => {
+            if (c.dataset.plan === p) { c.classList.add("selected"); booking.plan = p; document.getElementById("step1-next").disabled = false; }
+          });
+        }
+        document.getElementById("pay-message").textContent = "Welcome! A spot has been reserved for you. Complete your purchase below.";
+        document.getElementById("pay-message").style.display = "block";
+        document.getElementById("pay-message").style.color = "var(--green-dark)";
+      }
     </script>
 
     <footer style="padding:20px clamp(18px,4vw,56px);background:var(--surface-soft);border-top:1px solid var(--line);font-size:0.75rem;color:var(--muted);line-height:1.6">

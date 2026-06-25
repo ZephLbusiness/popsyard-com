@@ -72,6 +72,25 @@ db.exec(`
     sent_at TEXT DEFAULT (datetime('now')),
     response TEXT CHECK(response IN ('yes','no','no_reply'))
   );
+  CREATE TABLE IF NOT EXISTS waiting_list (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    senior_name TEXT,
+    senior_phone TEXT,
+    address TEXT NOT NULL,
+    dogs TEXT,
+    plan TEXT NOT NULL,
+    notes TEXT,
+    day_of_week TEXT,
+    time_slot TEXT,
+    status TEXT NOT NULL DEFAULT 'waiting' CHECK(status IN ('waiting','notified','claimed','skipped','expired')),
+    notified_at TEXT,
+    claimed_at TEXT,
+    claim_token TEXT UNIQUE,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -100,6 +119,11 @@ function generateAppointmentDates(dayOfWeek, startDate, count) {
     current = addDays(current, 1);
   }
   return dates;
+}
+
+function activeClientCount() {
+  return db.prepare("SELECT COUNT(*) as c FROM subscriptions WHERE status = 'active'").get().c +
+    db.prepare("SELECT COUNT(*) as c FROM one_time_cleans WHERE status = 'scheduled'").get().c;
 }
 
 function checkConflicts(dates, timeSlot, excludeId) {
@@ -151,7 +175,7 @@ function allCustomers() {
 
 module.exports = {
   db, uid, today, getNextDayOfWeek, addDays, generateAppointmentDates,
-  checkConflicts, getCustomerWithSubscription, getAppointmentsForCalendar, allCustomers,
+  checkConflicts, getCustomerWithSubscription, getAppointmentsForCalendar, allCustomers, activeClientCount,
   customers: db.prepare("SELECT * FROM customers ORDER BY created_at DESC"),
   customerById: db.prepare("SELECT * FROM customers WHERE id = ?"),
   createCustomer: db.prepare("INSERT INTO customers (id, name, phone, email, stripe_customer_id) VALUES (?, ?, ?, ?, ?)"),
@@ -172,5 +196,13 @@ module.exports = {
   createOneTimeClean: db.prepare("INSERT INTO one_time_cleans (id, customer_id, senior_id, date, time_slot, stripe_payment_intent_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)"),
   logRenewalSms: db.prepare("INSERT INTO renewal_sms_log (subscription_id, response) VALUES (?, ?)"),
   renewalSmsLastSent: db.prepare("SELECT * FROM renewal_sms_log WHERE subscription_id = ? ORDER BY sent_at DESC LIMIT 1"),
-  checkConflicts
+  checkConflicts,
+  createWaitingEntry: db.prepare("INSERT INTO waiting_list (id, name, phone, email, senior_name, senior_phone, address, dogs, plan, notes, day_of_week, time_slot, status, claim_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?)"),
+  waitingListAll: db.prepare("SELECT * FROM waiting_list ORDER BY created_at ASC"),
+  waitingListWaiting: db.prepare("SELECT * FROM waiting_list WHERE status = 'waiting' ORDER BY created_at ASC"),
+  waitingFirst: db.prepare("SELECT * FROM waiting_list WHERE status = 'waiting' ORDER BY created_at ASC LIMIT 1"),
+  waitingById: db.prepare("SELECT * FROM waiting_list WHERE id = ?"),
+  waitingByToken: db.prepare("SELECT * FROM waiting_list WHERE claim_token = ?"),
+  updateWaitingStatus: db.prepare("UPDATE waiting_list SET status = ?, notified_at = CASE WHEN ? = 'notified' THEN datetime('now') ELSE notified_at END, claimed_at = CASE WHEN ? = 'claimed' THEN datetime('now') ELSE claimed_at END WHERE id = ?"),
+  deleteWaitingEntry: db.prepare("DELETE FROM waiting_list WHERE id = ?"),
 };
