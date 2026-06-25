@@ -48,6 +48,7 @@
 
     <script>
       const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
+      let currentEntry = null;
 
       async function init() {
         const params = new URLSearchParams(window.location.search);
@@ -78,6 +79,7 @@
       }
 
       function renderClaim(entry) {
+        currentEntry = entry;
         const content = document.getElementById("claim-content");
         const statusLabels = { waiting: "Waiting", notified: "Offer Sent", claimed: "Claimed", skipped: "Skipped", expired: "Expired" };
         const statusClass = "status-" + entry.status;
@@ -111,26 +113,81 @@
               If not, your position will be handed to the next person in line.
             </p>
             <div class="claim-actions">
-              <button class="claim-yes" onclick="goToPurchase('${encodeURIComponent(entry.name)}', '${encodeURIComponent(entry.address)}', '${encodeURIComponent(entry.plan || "")}')">YES and PURCHASE</button>
+              <button class="claim-yes" id="claim-yes-btn" onclick="processPurchaseFromData()">YES and PURCHASE</button>
               <button class="claim-no" onclick="skipSpot('${entry.id}')">No, pass it on</button>
             </div>
           </div>
         `;
       }
 
-      function goToPurchase(name, address, plan) {
-        try {
-          localStorage.setItem("savedCustomerInfo", JSON.stringify({
-            name: decodeURIComponent(name),
-            phone: "",
-            email: "",
-            address: decodeURIComponent(address),
-            recipientName: "",
-            recipientPhone: "",
-          }));
-        } catch {}
-        window.location.href = "book.html?claimed=1&name=" + name + "&address=" + address + "&plan=" + plan;
+      async function processPurchaseFromData() {
+        const entry = currentEntry;
+        if (!entry) { document.getElementById("claim-content").innerHTML = '<div class="error-box">Session expired. Please use the link from your email again.</div>'; return; }
+        processPurchase(entry);
       }
+
+      async function processPurchase(entry) {
+        const overlay = document.getElementById("loading-overlay");
+        overlay.classList.add("show");
+
+        const planMap = {
+          "Silver Deep Clean": "silver",
+          "Gold Membership": "gold",
+          "One-Time Clean": "one_time",
+          "silver": "silver",
+          "gold": "gold",
+          "one_time": "one_time",
+        };
+        const planId = planMap[entry.plan] || "silver";
+
+        try {
+          const body = {
+            name: entry.name,
+            phone: entry.phone || "",
+            email: entry.email || "",
+            seniorName: entry.senior_name || "",
+            seniorPhone: entry.senior_phone || "",
+            address: entry.address,
+            dogs: entry.dogs || "",
+            notes: entry.notes || "",
+            plan: planId,
+            dayOfWeek: entry.day_of_week || null,
+            timeSlot: entry.time_slot || null,
+          };
+
+          const customerRes = await fetch(BACKEND_URL + "/api/customers", {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+          });
+          const customerData = await customerRes.json();
+          if (!customerData.success) throw new Error(customerData.error || "Failed to create customer");
+
+          if (planId === "gold") {
+            const subRes = await fetch(BACKEND_URL + "/api/subscriptions", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ customerId: customerData.customerId, plan: planId, dayOfWeek: entry.day_of_week || "Monday", timeSlot: entry.time_slot || "11am" })
+            });
+            const subData = await subRes.json();
+            if (!subData.success) throw new Error(subData.error || "Subscription creation failed");
+          }
+
+          const succUrl = window.location.origin + "/book.html?success=1&plan=" + planId + "&customer=" + customerData.customerId;
+          const cancUrl = window.location.origin + "/claim.html?canceled=1";
+          const stripeRes = await fetch(BACKEND_URL + "/api/stripe/create-checkout", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan: planId, customerId: customerData.customerId, successUrl: succUrl, cancelUrl: cancUrl })
+          });
+          const stripeData = await stripeRes.json();
+          if (stripeData.url) { window.location.href = stripeData.url; return; }
+          throw new Error("Stripe redirect failed");
+        } catch (err) {
+          overlay.classList.remove("show");
+          document.getElementById("claim-content").innerHTML = `
+            <div class="error-box">Something went wrong: ${esc(err.message)}. <a href="book.html" style="color:#856404">Try booking manually</a></div>
+          `;
+        }
+      }
+
+
 
       async function skipSpot(id) {
         if (!confirm("Pass this spot to the next person in line? You'll be removed from the waiting list.")) return;

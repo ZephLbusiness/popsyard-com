@@ -103,22 +103,22 @@
 
       <div id="step-1" class="step active">
         <h2>Choose your plan</h2>
-        <p>Select the plan that fits your needs. All plans include lawn mowing, poop scooping, plant watering, and kennel cleaning.</p>
+        <p>Pick a one-time clean, a deep clean, or a weekly membership. Seniors &amp; retirees only.</p>
         <div class="plan-cards">
           <div class="plan-card" data-plan="one_time" onclick="selectPlan(this, 'one_time')">
             <h3>One-Time Clean</h3>
             <div class="price">$59.99</div>
-            <p>Full yard service including lawn mowing, poop scoop, plants, and kennels. The first clean is always free (at any new location)*.</p>
+            <p>Poop scoop, plant watering, and kennel cleaning. No lawn mowing — just the essential cleanup.</p>
           </div>
           <div class="plan-card featured" data-plan="silver" onclick="selectPlan(this, 'silver')">
-            <h3>Silver Membership</h3>
+            <h3>Silver Deep Clean</h3>
             <div class="price">$159.99</div>
-            <p>4 weekly visits including lawn mowing, poop, plants, kennels, photo updates, gate check.</p>
+            <p>One-time deep clean with lawn mowing, weed pulling, brush clearing, poop, plants, and kennels. All the regular stuff plus extra care.</p>
           </div>
           <div class="plan-card" data-plan="gold" onclick="selectPlan(this, 'gold')">
             <h3>Gold Membership</h3>
             <div class="price">$359.99</div>
-            <p>Everything in Silver + 2 times the visits, lawn mowing included, plus a printed report.</p>
+            <p>4 weeks of weekly service — lawn mowing, weed pulling, brush clearing, poop, plants, kennels, plus mulch laying for small to medium gardens.</p>
           </div>
         </div>
         <div class="nav-buttons">
@@ -303,7 +303,7 @@
       }
 
       function populateReview() {
-        const plans = { silver: ["Silver Membership", "$159.99 / 4 weeks"], gold: ["Gold Membership", "$359.99 / 4 weeks"], one_time: ["One-Time Clean", "$59.99"] };
+        const plans = { silver: ["Silver Deep Clean", "$159.99 one-time"], gold: ["Gold Membership", "$359.99 / 4 weeks"], one_time: ["One-Time Clean", "$59.99"] };
         const p = plans[booking.plan] || ["", ""];
         document.getElementById("rv-plan-name").textContent = p[0];
         document.getElementById("rv-plan-price").innerHTML = p[1];
@@ -390,12 +390,12 @@
           const customerData = await customerRes.json();
           if (!customerData.success) throw new Error(customerData.error || "Failed to create customer");
 
-          if (booking.plan === "one_time") {
-            const succUrl = window.location.origin + "/book.html?success=1&plan=one_time&customer=" + customerData.customerId;
+          if (booking.plan === "one_time" || booking.plan === "silver") {
+            const succUrl = window.location.origin + "/book.html?success=1&plan=" + booking.plan + "&customer=" + customerData.customerId;
             const cancUrl = window.location.origin + "/book.html?canceled=1";
             const stripeRes = await fetch(BACKEND_URL + "/api/stripe/create-checkout", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ plan: "one_time", customerId: customerData.customerId, successUrl: succUrl, cancelUrl: cancUrl })
+              body: JSON.stringify({ plan: booking.plan, customerId: customerData.customerId, successUrl: succUrl, cancelUrl: cancUrl })
             });
             const stripeData = await stripeRes.json();
             if (stripeData.url) { window.location.href = stripeData.url; return; }
@@ -488,7 +488,7 @@
     </script>
 
     <footer style="padding:20px clamp(18px,4vw,56px);background:var(--surface-soft);border-top:1px solid var(--line);font-size:0.75rem;color:var(--muted);line-height:1.6">
-      <p><strong>*Free clean offer:</strong> The first clean at any location is free as an added week at the beginning of your subscription. Limit one free clean per property, ever. Orders may be canceled at any time. This offer applies to new customers only and cannot be combined with other promotions.</p>
+      <p><strong>*Free clean offer:</strong> The first clean at any location is free as an added week at the beginning of your subscription (or included in one-time plans). Limit one free clean per property, ever. If you cancel after the free clean only, your balance is $0. If you cancel after receiving paid service, a prorated refund will be issued based on the number of weeks worked (e.g., 2 weeks of a 4-week plan = refund of 2/4 of the price). This offer applies to all plans. Orders may be canceled at any time. This offer applies to new customers only and cannot be combined with other promotions.</p>
     </footer>
   </body>
 </html>

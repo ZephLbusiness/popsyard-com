@@ -351,14 +351,14 @@ app.post("/api/stripe/webhook", async (req, res) => {
       if (event.subscriptionId) {
         db.db.prepare("UPDATE subscriptions SET stripe_subscription_id = ? WHERE customer_id = ? AND stripe_subscription_id IS NULL").run(event.subscriptionId, event.customerId);
       }
-      if (event.mode === "payment" && event.plan === "one_time") {
+      if (event.mode === "payment" && (event.plan === "one_time" || event.plan === "silver")) {
         const otc = db.db.prepare("SELECT * FROM one_time_cleans WHERE customer_id = ? AND stripe_payment_intent_id IS NULL ORDER BY created_at DESC LIMIT 1").get(event.customerId);
         if (otc) db.db.prepare("UPDATE one_time_cleans SET stripe_payment_intent_id = ? WHERE id = ?").run(event.paymentIntentId, otc.id);
       }
       // Send payment confirmation to customer
       const customer = db.getCustomerWithSubscription(event.customerId);
       if (customer && customer.email) {
-        const planLabel = event.plan === "one_time" ? "One-Time Clean" : event.plan === "silver" ? "Silver Membership" : "Gold Membership";
+        const planLabel = event.plan === "one_time" ? "One-Time Clean" : event.plan === "silver" ? "Silver Deep Clean" : "Gold Membership";
         const confirmHtml = `<h2>Payment Confirmed!</h2><p>Hi ${customer.name},</p><p>Your payment for <strong>${planLabel}</strong> was successful. We'll be in touch to schedule your first visit.</p><p style="color:#888">- Zeph, popsyard.com</p>`;
         sendEmail(customer.email, "Payment Confirmed — popsyard.com", confirmHtml);
       }

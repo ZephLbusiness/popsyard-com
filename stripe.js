@@ -8,7 +8,7 @@ try {
 function isConfigured() { return !!stripe; }
 
 const PRICES = {
-  silver: { amount: 15999, currency: "usd", interval: "week", interval_count: 4, name: "Silver Membership" },
+  silver: { amount: 15999, currency: "usd", name: "Silver Deep Clean" },
   gold: { amount: 35999, currency: "usd", interval: "week", interval_count: 4, name: "Gold Membership" },
   one_time: { amount: 5999, currency: "usd", name: "One-Time Clean" },
 };
@@ -17,7 +17,8 @@ async function createCheckoutSession(plan, customerId, successUrl, cancelUrl) {
   if (!stripe) throw new Error("Stripe not configured. Set STRIPE_SECRET_KEY env var.");
   const price = PRICES[plan];
   if (!price) throw new Error("Invalid plan: " + plan);
-  const mode = plan === "one_time" ? "payment" : "subscription";
+  const isOneTime = plan === "one_time" || plan === "silver";
+  const mode = isOneTime ? "payment" : "subscription";
   const lineItems = [{
     price_data: {
       currency: price.currency,
