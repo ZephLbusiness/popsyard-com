@@ -220,11 +220,28 @@
           </label>
           <label>
             <span>Plan</span>
-            <select name="plan">
-              <option>Silver Membership ($159.99/mo)</option>
-              <option>Gold Membership ($359.99/mo)</option>
-              <option>One-Time Clean ($59.99)</option>
+            <select name="plan" onchange="toggleYardSize(this)">
+              <option value="Silver Deep Clean">Silver Deep Clean ($159.99)</option>
+              <option value="Gold Membership">Gold Membership ($359.99/mo)</option>
+              <option value="One-Time Clean">One-Time Clean ($59.99)</option>
             </select>
+          </label>
+          <div id="index-yard-size" style="display:none">
+            <span style="display:block;margin-bottom:4px;font-size:0.82rem;font-weight:800;color:var(--muted);text-transform:uppercase">Yard size</span>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <label style="padding:10px 18px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;background:var(--surface);display:flex;align-items:center;gap:6px">
+                <input type="radio" name="yardSize" value="small" onchange="checkYardSize(this)" /> Small (&lt; 1/4 acre)
+              </label>
+              <label style="padding:10px 18px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;background:var(--surface);display:flex;align-items:center;gap:6px">
+                <input type="radio" name="yardSize" value="medium" onchange="checkYardSize(this)" /> Medium (1/4–1/2 acre)
+              </label>
+              <label style="padding:10px 18px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;background:var(--surface);display:flex;align-items:center;gap:6px">
+                <input type="radio" name="yardSize" value="large" onchange="checkYardSize(this)" /> Large (&gt; 1/2 acre)
+              </label>
+            </div>
+            <span id="index-yard-size-warning" style="display:none;margin-top:10px;background:#fff3cd;color:#856404;padding:12px 16px;border-radius:8px;font-weight:700;font-size:0.88rem">
+              This yard is too large for Silver Deep Clean. Please select <strong>Gold Membership</strong> or a different plan.
+            </span>
           </label>
           <label>
             <span>Preferred crew member</span>

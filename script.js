@@ -312,6 +312,30 @@ async function notifyBackend(booking) {
   }
 }
 
+function toggleYardSize(sel) {
+  const area = document.getElementById("index-yard-size");
+  const warning = document.getElementById("index-yard-size-warning");
+  const submitBtn = document.querySelector("#service-order-form button[type=submit]");
+  if (submitBtn) submitBtn.disabled = false;
+  if (area) {
+    area.style.display = sel.value === "Silver Deep Clean" ? "block" : "none";
+    warning.style.display = "none";
+    document.querySelectorAll('[name="yardSize"]').forEach(r => r.checked = false);
+  }
+}
+
+function checkYardSize(el) {
+  const warning = document.getElementById("index-yard-size-warning");
+  const submitBtn = document.querySelector("#service-order-form button[type=submit]");
+  if (el.value === "large") {
+    warning.style.display = "block";
+    if (submitBtn) submitBtn.disabled = true;
+  } else {
+    warning.style.display = "none";
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
 function setupOrderForm() {
   const form = document.querySelector("#service-order-form");
   const message = document.querySelector("#booking-message");

@@ -121,6 +121,23 @@
             <p>4 weeks of weekly service — lawn mowing, weed pulling, brush clearing, poop, plants, kennels, plus mulch laying for small to medium gardens.</p>
           </div>
         </div>
+        <div id="yard-size-area" style="display:none;margin-bottom:16px">
+          <p style="font-weight:800;margin-bottom:8px">How big is the yard?</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label class="yard-size-btn" data-size="small" onclick="selectYardSize(this,'small')" style="padding:12px 20px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.15s;background:var(--surface)">
+              <input type="radio" name="yard-size" value="small" style="display:none" /> Small (&lt; 1/4 acre)
+            </label>
+            <label class="yard-size-btn" data-size="medium" onclick="selectYardSize(this,'medium')" style="padding:12px 20px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.15s;background:var(--surface)">
+              <input type="radio" name="yard-size" value="medium" style="display:none" /> Medium (1/4–1/2 acre)
+            </label>
+            <label class="yard-size-btn" data-size="large" onclick="selectYardSize(this,'large')" style="padding:12px 20px;border:2px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;transition:all 0.15s;background:var(--surface)">
+              <input type="radio" name="yard-size" value="large" style="display:none" /> Large (&gt; 1/2 acre)
+            </label>
+          </div>
+          <div id="yard-size-warning" style="display:none;margin-top:10px;background:#fff3cd;color:#856404;padding:12px 16px;border-radius:8px;font-weight:700">
+            This yard is too large for Silver. Please select <strong>Gold Membership</strong> instead.
+          </div>
+        </div>
         <div class="nav-buttons">
           <button class="next" onclick="goStep(2)" disabled id="step1-next">Next: Day &amp; Time</button>
         </div>
@@ -174,7 +191,7 @@
         <div class="review-box" id="review-plan"><h3 id="rv-plan-name">Silver Membership</h3><p id="rv-plan-price">$159.99 / 4 weeks</p></div>
         <div class="review-box"><p><span class="label">Day</span><br><span id="rv-day"></span></p><p><span class="label">Time</span><br><span id="rv-time"></span></p></div>
         <div class="review-box"><p><span class="label">Your name</span><br><span id="rv-name"></span></p><p><span class="label">Phone</span><br><span id="rv-phone"></span></p><p><span class="label">Email</span><br><span id="rv-email"></span></p></div>
-        <div class="review-box"><p><span class="label">Senior</span><br><span id="rv-senior-name"></span></p><p><span class="label">Senior phone</span><br><span id="rv-senior-phone"></span></p><p><span class="label">Address</span><br><span id="rv-address"></span></p><p><span class="label">Dogs</span><br><span id="rv-dogs"></span></p></div>
+        <div class="review-box"><p><span class="label">Senior</span><br><span id="rv-senior-name"></span></p><p><span class="label">Senior phone</span><br><span id="rv-senior-phone"></span></p><p><span class="label">Address</span><br><span id="rv-address"></span></p><p><span class="label">Dogs</span><br><span id="rv-dogs"></span></p><p id="rv-yard-size-row" style="display:none"><span class="label">Yard size</span><br><span id="rv-yard-size"></span></p></div>
         <div class="nav-buttons">
           <button class="back" onclick="goStep(3)">Back</button>
           <button class="next" id="pay-btn" onclick="handlePayment()">Pay &amp; Confirm</button>
@@ -186,7 +203,7 @@
     <script>
       const BACKEND_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:3456" : "https://shimmering-inspiration-production-d0a3.up.railway.app";
 
-      let booking = { plan: null, dayOfWeek: null, dayName: null, timeSlot: null, conflicts: null };
+      let booking = { plan: null, dayOfWeek: null, dayName: null, timeSlot: null, conflicts: null, yardSize: null };
 
       const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
       const DAY_ABBR = ["Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -215,7 +232,32 @@
         document.querySelectorAll(".plan-card").forEach(c => c.classList.remove("selected"));
         el.classList.add("selected");
         booking.plan = plan;
-        document.getElementById("step1-next").disabled = false;
+        booking.yardSize = null;
+        const yardArea = document.getElementById("yard-size-area");
+        const warning = document.getElementById("yard-size-warning");
+        warning.style.display = "none";
+        document.querySelectorAll(".yard-size-btn").forEach(b => b.style.borderColor = "var(--line)");
+        if (plan === "silver") {
+          yardArea.style.display = "block";
+          document.getElementById("step1-next").disabled = true;
+        } else {
+          yardArea.style.display = "none";
+          document.getElementById("step1-next").disabled = false;
+        }
+      }
+
+      function selectYardSize(el, size) {
+        document.querySelectorAll(".yard-size-btn").forEach(b => b.style.borderColor = "var(--line)");
+        el.style.borderColor = "var(--green-dark)";
+        booking.yardSize = size;
+        const warning = document.getElementById("yard-size-warning");
+        if (size === "large") {
+          warning.style.display = "block";
+          document.getElementById("step1-next").disabled = true;
+        } else {
+          warning.style.display = "none";
+          document.getElementById("step1-next").disabled = false;
+        }
       }
 
       function selectDay(el, day) {
@@ -316,6 +358,14 @@
         document.getElementById("rv-senior-phone").textContent = document.getElementById("f-senior-phone").value || "—";
         document.getElementById("rv-address").textContent = document.getElementById("f-address").value;
         document.getElementById("rv-dogs").textContent = document.getElementById("f-dogs").value;
+        const ysr = document.getElementById("rv-yard-size-row");
+        const ysv = document.getElementById("rv-yard-size");
+        if (booking.yardSize) {
+          ysr.style.display = "block";
+          ysv.textContent = booking.yardSize.charAt(0).toUpperCase() + booking.yardSize.slice(1);
+        } else {
+          ysr.style.display = "none";
+        }
       }
 
       async function handlePayment() {
@@ -379,6 +429,7 @@
             dayOfWeek: booking.dayOfWeek,
             timeSlot: booking.timeSlot,
             conflicts: booking.conflicts?.alternativeTimes || null,
+            yardSize: booking.yardSize,
           };
 
           const loading = document.getElementById("loading-overlay");
